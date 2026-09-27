@@ -14,12 +14,14 @@ The project is complited, and I plan to continue this , expanding it with m ore 
 
 ## Screenshots
 
-Add at least one screenshot of the portfolio here.
+Add at least one screenshot of the game here.
 
 Example:
 
 ![Portfolio Screenshot](./public/demo.png)
 ![Portfolio Screenshot](./public/demo1.png)
+![Portfolio Screenshot](./public/demo2.png)
+![Portfolio Screenshot](./public/demo3.png)
 
 ## Getting Started
 
