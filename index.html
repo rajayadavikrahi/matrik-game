@@ -5,43 +5,106 @@
 
     <meta
         name="viewport"
-        content="width=device-width, initial-scale=1.0"
+        content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     >
 
     <title>MindRush - Math Game</title>
+
+    <meta
+        name="description"
+        content="MindRush is a fast brain-training math game. Quick Math, Mind Snap, Number Rush and Memory Numbers. Train your brain, beat your high score."
+    >
+
+    <!--
+        Tells the browser the page is dark by design.
+
+        Without these the browser renders native
+        widgets, scrollbars and the address bar in
+        light mode, which produces a white flash and
+        light-coloured form controls on a dark UI.
+    -->
+
+    <meta
+        name="color-scheme"
+        content="dark"
+    >
+
+    <meta
+        name="theme-color"
+        content="#08090d"
+    >
+
+    <link
+        rel="icon"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%237c3aed'/%3E%3Ctext x='16' y='23' font-family='system-ui,sans-serif' font-size='19' font-weight='800' fill='%23ffffff' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E"
+    >
 
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-   
+    <!--
+        Skip link.
+
+        The first focusable element on the page.
+        Visually hidden until it receives focus.
+    -->
+
+    <a
+        class="skip-link"
+        href="#mainContent"
+    >
+        Skip to main content
+    </a>
+
+
     <!-- BACKGROUND -->
-    
+
     <div class="background-shape shape-one"></div>
     <div class="background-shape shape-two"></div>
 
-   
+
     <!-- NAVBAR -->
-   
+
 
     <header class="navbar">
 
-        <div class="logo">
-            <div class="logo-icon">M</div>
+        <button
+            class="logo"
+            id="logoButton"
+            type="button"
+            aria-label="MindRush home"
+        >
+            <span class="logo-icon" aria-hidden="true">M</span>
             <span>Mind<span>Rush</span></span>
-        </div>
+        </button>
 
         <div class="nav-right">
 
-            <div class="top-stat">
-                <span>🔥</span>
+            <button
+                class="top-stat"
+                id="navStreakButton"
+                aria-label="View your statistics"
+                type="button"
+            >
+                <span aria-hidden="true">🔥</span>
                 <span id="navStreak">0</span>
-            </div>
+            </button>
+
+            <button
+                class="secondary-button nav-button"
+                id="statsButton"
+                type="button"
+            >
+                Stats
+            </button>
 
             <button
                 class="profile-button"
                 id="profileButton"
+                aria-label="Open your profile"
+                type="button"
             >
                 <span id="profileAvatar">P</span>
             </button>
@@ -50,18 +113,25 @@
 
     </header>
 
-    
-    <!-- MAIN APPLICATION -->
-    
-    <main class="app">
 
-        
+    <!-- MAIN APPLICATION -->
+
+
+    <main
+        class="app"
+        id="mainContent"
+        tabindex="-1"
+    >
+
+
         <!-- HOME SCREEN -->
-        
+
 
         <section
             id="homeScreen"
             class="screen active"
+            tabindex="-1"
+            aria-labelledby="homeHeading"
         >
 
             <div class="hero">
@@ -72,7 +142,7 @@
                         🧠 TRAIN YOUR BRAIN
                     </div>
 
-                    <h1>
+                    <h1 id="homeHeading">
                         Think fast.<br>
                         <span>Play smarter.</span>
                     </h1>
@@ -87,14 +157,16 @@
                         <button
                             class="primary-button"
                             id="quickPlayButton"
+                            type="button"
                         >
                             Play Now
-                            <span>→</span>
+                            <span aria-hidden="true">→</span>
                         </button>
 
                         <button
                             class="secondary-button"
                             id="practiceButton"
+                            type="button"
                         >
                             Practice
                         </button>
@@ -105,19 +177,31 @@
 
                 <div class="hero-card">
 
-                    <div class="floating-number number-one">
+                    <div
+                        class="floating-number number-one"
+                        aria-hidden="true"
+                    >
                         7
                     </div>
 
-                    <div class="floating-number number-two">
+                    <div
+                        class="floating-number number-two"
+                        aria-hidden="true"
+                    >
                         ×
                     </div>
 
-                    <div class="floating-number number-three">
+                    <div
+                        class="floating-number number-three"
+                        aria-hidden="true"
+                    >
                         42
                     </div>
 
-                    <div class="brain-circle">
+                    <div
+                        class="brain-circle"
+                        aria-hidden="true"
+                    >
                         🧠
                     </div>
 
@@ -141,97 +225,141 @@
 
             </div>
 
+            <!--
+                Mode cards are <button> elements, so every
+                child must be phrasing content. Headings and
+                paragraphs are not allowed inside a button,
+                so the title and description are spans
+                that are styled as blocks instead.
+            -->
+
             <div class="mode-grid">
 
                 <button
                     class="mode-card"
                     data-mode="quick"
+                    type="button"
                 >
 
-                    <div class="mode-icon orange">
+                    <span
+                        class="mode-icon orange"
+                        aria-hidden="true"
+                    >
                         ⚡
-                    </div>
+                    </span>
 
-                    <div class="mode-content">
-                        <h3>Quick Math</h3>
-                        <p>Solve as many equations as possible.</p>
+                    <span class="mode-content">
+                        <span class="mode-title">Quick Math</span>
+                        <span class="mode-desc">Solve as many equations as possible.</span>
 
-                        <div class="mode-meta">
+                        <span class="mode-meta">
                             <span>⏱ 60 sec</span>
                             <span>⭐ Easy</span>
-                        </div>
-                    </div>
+                        </span>
+                    </span>
 
-                    <span class="mode-arrow">→</span>
+                    <span
+                        class="mode-arrow"
+                        aria-hidden="true"
+                    >
+                        →
+                    </span>
 
                 </button>
 
                 <button
                     class="mode-card"
                     data-mode="snap"
+                    type="button"
                 >
 
-                    <div class="mode-icon purple">
+                    <span
+                        class="mode-icon purple"
+                        aria-hidden="true"
+                    >
                         🎯
-                    </div>
+                    </span>
 
-                    <div class="mode-content">
-                        <h3>Mind Snap</h3>
-                        <p>Pick the correct answer before time runs out.</p>
+                    <span class="mode-content">
+                        <span class="mode-title">Mind Snap</span>
+                        <span class="mode-desc">Pick the correct answer before time runs out.</span>
 
-                        <div class="mode-meta">
+                        <span class="mode-meta">
                             <span>⏱ 45 sec</span>
                             <span>⭐ Medium</span>
-                        </div>
-                    </div>
+                        </span>
+                    </span>
 
-                    <span class="mode-arrow">→</span>
+                    <span
+                        class="mode-arrow"
+                        aria-hidden="true"
+                    >
+                        →
+                    </span>
 
                 </button>
 
                 <button
                     class="mode-card"
                     data-mode="rush"
+                    type="button"
                 >
 
-                    <div class="mode-icon blue">
+                    <span
+                        class="mode-icon blue"
+                        aria-hidden="true"
+                    >
                         🚀
-                    </div>
+                    </span>
 
-                    <div class="mode-content">
-                        <h3>Number Rush</h3>
-                        <p>Build the longest possible answer streak.</p>
+                    <span class="mode-content">
+                        <span class="mode-title">Number Rush</span>
+                        <span class="mode-desc">Build the longest possible answer streak.</span>
 
-                        <div class="mode-meta">
+                        <span class="mode-meta">
                             <span>⏱ 30 sec</span>
                             <span>⭐ Hard</span>
-                        </div>
-                    </div>
+                        </span>
+                    </span>
 
-                    <span class="mode-arrow">→</span>
+                    <span
+                        class="mode-arrow"
+                        aria-hidden="true"
+                    >
+                        →
+                    </span>
 
                 </button>
 
                 <button
                     class="mode-card"
                     data-mode="memory"
+                    type="button"
                 >
 
-                    <div class="mode-icon green">
+                    <span
+                        class="mode-icon green"
+                        aria-hidden="true"
+                    >
                         🧩
-                    </div>
+                    </span>
 
-                    <div class="mode-content">
-                        <h3>Memory Numbers</h3>
-                        <p>Remember numbers and reproduce them.</p>
+                    <span class="mode-content">
+                        <span class="mode-title">Memory Numbers</span>
+                        <span class="mode-desc">Remember numbers and reproduce them.</span>
 
-                        <div class="mode-meta">
+                        <span class="mode-meta">
                             <span>🧠 Memory</span>
                             <span>⭐ Hard</span>
-                        </div>
-                    </div>
+                        </span>
+                    </span>
 
-                    <span class="mode-arrow">→</span>
+                    <span
+                        class="mode-arrow"
+                        aria-hidden="true"
+                    >
+                        →
+                    </span>
 
                 </button>
 
@@ -245,7 +373,7 @@
 
                     <div class="dashboard-title">
                         <h3>Your progress</h3>
-                        <span>📈</span>
+                        <span aria-hidden="true">📈</span>
                     </div>
 
                     <div class="progress-stats">
@@ -277,7 +405,10 @@
 
                 <div class="dashboard-card streak-card">
 
-                    <div class="streak-big">
+                    <div
+                        class="streak-big"
+                        aria-hidden="true"
+                    >
                         🔥
                     </div>
 
@@ -293,13 +424,15 @@
         </section>
 
 
-        
+
         <!-- GAME SCREEN -->
-       
+
 
         <section
             id="gameScreen"
             class="screen"
+            tabindex="-1"
+            aria-labelledby="gameModeTitle"
         >
 
             <div class="game-header">
@@ -307,20 +440,31 @@
                 <button
                     class="back-button"
                     id="gameBackButton"
+                    type="button"
                 >
-                    ← Exit
+                    <span aria-hidden="true">←</span>
+                    Exit
                 </button>
 
                 <div class="game-title">
 
-                    <span id="gameModeIcon">⚡</span>
+                    <span
+                        id="gameModeIcon"
+                        class="game-mode-icon"
+                        aria-hidden="true"
+                    >
+                        ⚡
+                    </span>
 
                     <div>
                         <h2 id="gameModeTitle">
                             Quick Math
                         </h2>
 
-                        <span id="questionCounter">
+                        <span
+                            id="questionCounter"
+                            class="game-question-counter"
+                        >
                             Question 1
                         </span>
                     </div>
@@ -337,14 +481,34 @@
 
             <!-- TIMER -->
 
-            <div class="timer-container">
+            <div
+                class="timer-container"
+                id="timerContainer"
+            >
 
                 <div class="timer-info">
+
                     <span>TIME</span>
-                    <strong id="timerText">60</strong>
+
+                    <strong
+                        id="timerText"
+                        role="timer"
+                        aria-live="off"
+                    >
+                        60
+                    </strong>
+
                 </div>
 
-                <div class="timer-bar">
+                <div
+                    class="timer-bar"
+                    role="progressbar"
+                    id="timerBar"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    aria-valuenow="100"
+                    aria-label="Time remaining"
+                >
                     <div
                         id="timerProgress"
                         class="timer-progress"
@@ -382,22 +546,39 @@
 
                 <div
                     id="inputArea"
-                    class="input-area"
+                    class="input-area hidden"
                 >
+
+
+                    <!--
+                        type="text" with inputmode="numeric" instead
+                        of type="number".
+
+                        A number input lets the mouse wheel and the
+                        arrow keys silently change the value, which
+                        corrupts a typed answer, and it blocks
+                        leading zeros in Memory Numbers.
+                    -->
 
                     <input
                         id="answerInput"
-                        type="number"
+                        type="text"
+                        inputmode="numeric"
+                        pattern="[0-9]*"
+                        maxlength="12"
                         placeholder="Your answer"
+                        aria-label="Your answer"
                         autocomplete="off"
+                        spellcheck="false"
                     >
 
                     <button
                         id="submitAnswer"
                         class="primary-button submit-button"
+                        type="button"
                     >
                         Submit
-                        <span>↵</span>
+                        <span aria-hidden="true">↵</span>
                     </button>
 
                 </div>
@@ -410,10 +591,61 @@
                     class="options-area hidden"
                 >
 
-                    <button class="answer-option"></button>
-                    <button class="answer-option"></button>
-                    <button class="answer-option"></button>
-                    <button class="answer-option"></button>
+                    <button
+                        class="answer-option"
+                        aria-label="Answer option 1"
+                        type="button"
+                    >
+                        <span
+                            class="option-key"
+                            aria-hidden="true"
+                        >
+                            1
+                        </span>
+                        <span class="option-value"></span>
+                    </button>
+
+                    <button
+                        class="answer-option"
+                        aria-label="Answer option 2"
+                        type="button"
+                    >
+                        <span
+                            class="option-key"
+                            aria-hidden="true"
+                        >
+                            2
+                        </span>
+                        <span class="option-value"></span>
+                    </button>
+
+                    <button
+                        class="answer-option"
+                        aria-label="Answer option 3"
+                        type="button"
+                    >
+                        <span
+                            class="option-key"
+                            aria-hidden="true"
+                        >
+                            3
+                        </span>
+                        <span class="option-value"></span>
+                    </button>
+
+                    <button
+                        class="answer-option"
+                        aria-label="Answer option 4"
+                        type="button"
+                    >
+                        <span
+                            class="option-key"
+                            aria-hidden="true"
+                        >
+                            4
+                        </span>
+                        <span class="option-value"></span>
+                    </button>
 
                 </div>
 
@@ -428,6 +660,7 @@
                     <div
                         id="memoryNumber"
                         class="memory-number"
+                        aria-live="off"
                     >
                         12345
                     </div>
@@ -441,14 +674,20 @@
 
                     <input
                         id="memoryInput"
-                        type="number"
+                        type="text"
+                        inputmode="numeric"
+                        pattern="[0-9]*"
+                        maxlength="12"
                         placeholder="Enter the number"
+                        aria-label="Enter the number you saw"
                         autocomplete="off"
+                        spellcheck="false"
                     >
 
                     <button
                         id="memorySubmit"
-                        class="primary-button"
+                        class="primary-button hidden"
+                        type="button"
                     >
                         Check Number
                     </button>
@@ -461,6 +700,8 @@
                 <div
                     id="feedback"
                     class="feedback"
+                    role="status"
+                    aria-live="polite"
                 ></div>
 
             </div>
@@ -476,7 +717,7 @@
                 </div>
 
                 <div>
-                    <span>❤️ Lives</span>
+                    <span id="gameLivesLabel">❤️ Lives</span>
                     <strong id="gameLives">3</strong>
                 </div>
 
@@ -487,21 +728,43 @@
 
             </div>
 
+
+            <!--
+                Practice mode has no timer and no way to run
+                out of lives, so it needs an explicit way to
+                finish and bank the session.
+            -->
+
+            <div class="game-end-session">
+                <button
+                    id="endSessionButton"
+                    class="secondary-button hidden"
+                    type="button"
+                >
+                    End Session &amp; See Results
+                </button>
+            </div>
+
         </section>
 
 
-       
+
         <!-- RESULT SCREEN -->
-       
+
 
         <section
             id="resultScreen"
             class="screen"
+            tabindex="-1"
+            aria-labelledby="resultTitle"
         >
 
             <div class="result-container">
 
-                <div class="result-icon">
+                <div
+                    class="result-icon"
+                    aria-hidden="true"
+                >
                     🏆
                 </div>
 
@@ -551,6 +814,7 @@
                     <button
                         id="playAgainButton"
                         class="primary-button"
+                        type="button"
                     >
                         Play Again
                     </button>
@@ -558,6 +822,7 @@
                     <button
                         id="homeButton"
                         class="secondary-button"
+                        type="button"
                     >
                         Back Home
                     </button>
@@ -569,13 +834,15 @@
         </section>
 
 
-       
+
         <!-- STATS SCREEN -->
-        
+
 
         <section
             id="statsScreen"
             class="screen"
+            tabindex="-1"
+            aria-labelledby="statsHeading"
         >
 
             <div class="page-header">
@@ -583,8 +850,10 @@
                 <button
                     class="back-button"
                     id="statsBackButton"
+                    type="button"
                 >
-                    ← Back
+                    <span aria-hidden="true">←</span>
+                    Back
                 </button>
 
                 <div>
@@ -592,7 +861,7 @@
                         YOUR PERFORMANCE
                     </div>
 
-                    <h1>Statistics</h1>
+                    <h1 id="statsHeading">Statistics</h1>
                 </div>
 
             </div>
@@ -600,25 +869,25 @@
             <div class="stats-large-grid">
 
                 <div class="stat-large-card">
-                    <span>🎮</span>
+                    <span aria-hidden="true">🎮</span>
                     <strong id="statsGames">0</strong>
                     <small>Games Played</small>
                 </div>
 
                 <div class="stat-large-card">
-                    <span>⭐</span>
+                    <span aria-hidden="true">⭐</span>
                     <strong id="statsBestScore">0</strong>
                     <small>Best Score</small>
                 </div>
 
                 <div class="stat-large-card">
-                    <span>🎯</span>
+                    <span aria-hidden="true">🎯</span>
                     <strong id="statsAccuracy">0%</strong>
                     <small>Accuracy</small>
                 </div>
 
                 <div class="stat-large-card">
-                    <span>🔥</span>
+                    <span aria-hidden="true">🔥</span>
                     <strong id="statsBestStreak">0</strong>
                     <small>Best Streak</small>
                 </div>
@@ -628,7 +897,12 @@
             <div class="achievement-card">
 
                 <div>
-                    <span class="achievement-icon">🏅</span>
+                    <span
+                        class="achievement-icon"
+                        aria-hidden="true"
+                    >
+                        🏅
+                    </span>
                 </div>
 
                 <div>
@@ -643,12 +917,15 @@
         </section>
 
 
-       
+
         <!-- PROFILE SCREEN -->
-        
+
+
         <section
             id="profileScreen"
             class="screen"
+            tabindex="-1"
+            aria-labelledby="profileHeading"
         >
 
             <div class="page-header">
@@ -656,8 +933,10 @@
                 <button
                     class="back-button"
                     id="profileBackButton"
+                    type="button"
                 >
-                    ← Back
+                    <span aria-hidden="true">←</span>
+                    Back
                 </button>
 
                 <div>
@@ -665,20 +944,24 @@
                         PLAYER
                     </div>
 
-                    <h1>Your Profile</h1>
+                    <h1 id="profileHeading">Your Profile</h1>
                 </div>
 
             </div>
 
             <div class="profile-card">
 
-                <div class="profile-avatar-large">
+                <div
+                    class="profile-avatar-large"
+                    id="profileAvatarLarge"
+                    aria-hidden="true"
+                >
                     P
                 </div>
 
-                <h2>Player</h2>
+                <h2 id="profileName">Player</h2>
 
-                <p>
+                <p id="profileTagline">
                     Brain training enthusiast
                 </p>
 
@@ -687,7 +970,15 @@
                     <strong id="profileLevel">1</strong>
                 </div>
 
-                <div class="xp-bar">
+                <div
+                    class="xp-bar"
+                    role="progressbar"
+                    id="xpBar"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    aria-valuenow="0"
+                    aria-label="Progress to next level"
+                >
                     <div
                         id="xpProgress"
                         class="xp-progress"
@@ -708,26 +999,65 @@
     </main>
 
 
-   
     <!-- FOOTER -->
-   
 
-    <footer>8 
+
+    <footer>
         <span>MindRush</span>
         <span>Built with HTML • CSS • JavaScript</span>
     </footer>
 
 
-   
+    <!--
+        Exit confirmation.
+
+        A native <dialog> opened with showModal() gives us
+        focus trapping, Escape handling and an inert
+        background for free.
+    -->
+
+    <dialog
+        id="confirmDialog"
+        class="confirm-dialog"
+        aria-labelledby="confirmTitle"
+        aria-describedby="confirmMessage"
+    >
+
+        <h2 id="confirmTitle">
+            Leave this game?
+        </h2>
+
+        <p id="confirmMessage">
+            Your current run will not be saved.
+        </p>
+
+        <div class="confirm-buttons">
+
+            <button
+                id="confirmCancel"
+                class="secondary-button"
+                type="button"
+            >
+                Keep Playing
+            </button>
+
+            <button
+                id="confirmAccept"
+                class="primary-button danger"
+                type="button"
+            >
+                Leave
+            </button>
+
+        </div>
+
+    </dialog>
+
+
     <!-- JAVASCRIPT -->
-   
+
     <script src="script.js"></script>
 
 
 </body>
 </html>
-
-
-
-
-

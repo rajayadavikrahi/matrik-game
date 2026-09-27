@@ -9,10 +9,41 @@
    Everything is handled in this file.
 ========================================================= */
 
+"use strict";
+
 
 /* =========================================================
-   1. GAME CONFIGURATION
+   1. CONSTANTS
 ========================================================= */
+
+const STORAGE_KEY = "mindRushPlayer";
+
+const OPTION_COUNT = 4;
+
+const KEYBOARD_OPTIONS = ["1", "2", "3", "4"];
+
+/*
+    The reach-out time for Memory Numbers. Long enough
+    to actually read ten digits, short enough that the
+    rest of the round still fits inside 45 seconds.
+*/
+
+const MEMORY_SHOW_MS = 2200;
+
+const URGENT_SECONDS = 10;
+
+
+/* =========================================================
+   2. GAME CONFIGURATION
+========================================================= */
+
+/*
+    timed
+        False means no clock. Practice is untimed.
+
+    usesLives
+        False means a wrong answer never ends the round.
+*/
 
 const GAME_CONFIG = {
 
@@ -20,90 +51,128 @@ const GAME_CONFIG = {
         name: "Quick Math",
         icon: "⚡",
         time: 60,
-        description: "Solve as many equations as possible."
+        description: "Solve as many equations as possible.",
+        timed: true,
+        usesLives: true
     },
 
     snap: {
         name: "Mind Snap",
         icon: "🎯",
         time: 45,
-        description: "Pick the correct answer."
+        description: "Pick the correct answer.",
+        timed: true,
+        usesLives: true
     },
 
     rush: {
         name: "Number Rush",
         icon: "🚀",
         time: 30,
-        description: "Build the longest streak."
+        description: "Build the longest streak.",
+        timed: true,
+        usesLives: true
     },
 
     memory: {
         name: "Memory Numbers",
         icon: "🧩",
         time: 45,
-        description: "Remember number sequences."
+        description: "Remember number sequences.",
+        timed: true,
+        usesLives: true
     },
 
     practice: {
         name: "Practice Mode",
         icon: "📚",
-        time: 999,
-        description: "Practice without pressure."
+        time: 0,
+        description: "Practice without pressure.",
+        timed: false,
+        usesLives: false
     }
 
 };
 
 
 /* =========================================================
-   2. GAME STATE
+   3. GAME STATE
 ========================================================= */
 
-let gameState = {
+function createGameState(mode) {
 
-    active: false,
+    const config = GAME_CONFIG[mode];
 
-    mode: "quick",
+    return {
 
-    score: 0,
+        active: true,
 
-    correct: 0,
+        mode: mode,
 
-    wrong: 0,
+        timed: config.timed,
 
-    streak: 0,
+        usesLives: config.usesLives,
 
-    bestStreak: 0,
+        score: 0,
 
-    lives: 3,
+        correct: 0,
 
-    questionNumber: 0,
+        wrong: 0,
 
-    timeLeft: 60,
+        streak: 0,
 
-    totalTime: 60,
+        bestStreak: 0,
 
-    timer: null,
+        lives: 3,
 
-    questionAnswered: false,
+        questionNumber: 0,
 
-    currentAnswer: null,
+        timeLeft: config.time,
 
-    currentQuestion: null,
+        totalTime: config.time,
 
-    memorySequence: "",
+        /*
+            Absolute timestamp the round ends at.
 
-    memoryShowing: false,
+            Deriving the remaining time from a deadline
+            instead of subtracting a tenth of a second
+            per tick means background tabs, throttled
+            timers and floating point drift can no longer
+            hand the player free seconds.
+        */
 
-    memoryTimeout: null
+        deadline: null,
 
-};
+        timer: null,
+
+        questionAnswered: false,
+
+        currentAnswer: null,
+
+        currentQuestion: null,
+
+        memorySequence: "",
+
+        memoryShowing: false,
+
+        memoryTimeout: null,
+
+        nextQuestionTimeout: null
+
+    };
+
+}
+
+let gameState = createGameState("quick");
+
+gameState.active = false;
 
 
 /* =========================================================
-   3. PLAYER DATA
+   4. PLAYER DATA
 ========================================================= */
 
-let playerData = {
+const DEFAULT_PLAYER_DATA = {
 
     gamesPlayed: 0,
 
@@ -121,13 +190,17 @@ let playerData = {
 
     level: 1,
 
+    name: "Player",
+
     lastPlayedDate: null
 
 };
 
+let playerData = { ...DEFAULT_PLAYER_DATA };
+
 
 /* =========================================================
-   4. DOM ELEMENTS
+   5. DOM ELEMENTS
 ========================================================= */
 
 const homeScreen =
@@ -146,6 +219,9 @@ const profileScreen =
     document.getElementById("profileScreen");
 
 
+const logoButton =
+    document.getElementById("logoButton");
+
 const quickPlayButton =
     document.getElementById("quickPlayButton");
 
@@ -154,6 +230,15 @@ const practiceButton =
 
 const profileButton =
     document.getElementById("profileButton");
+
+const statsButton =
+    document.getElementById("statsButton");
+
+const navStreakButton =
+    document.getElementById("navStreakButton");
+
+const navStreak =
+    document.getElementById("navStreak");
 
 
 const gameBackButton =
@@ -172,6 +257,9 @@ const homeButton =
 const playAgainButton =
     document.getElementById("playAgainButton");
 
+const endSessionButton =
+    document.getElementById("endSessionButton");
+
 
 const gameModeIcon =
     document.getElementById("gameModeIcon");
@@ -182,17 +270,31 @@ const gameModeTitle =
 const questionCounter =
     document.getElementById("questionCounter");
 
+const questionLabel =
+    document.getElementById("questionLabel");
+
 const question =
     document.getElementById("question");
 
-const questionLabel =
-    document.getElementById("questionLabel");
+const questionArea =
+    document.getElementById("questionArea");
+
+const gameCard =
+    document.querySelector(".game-card");
+
 
 const gameScore =
     document.getElementById("gameScore");
 
+
+const timerContainer =
+    document.getElementById("timerContainer");
+
 const timerText =
     document.getElementById("timerText");
+
+const timerBar =
+    document.getElementById("timerBar");
 
 const timerProgress =
     document.getElementById("timerProgress");
@@ -212,7 +314,11 @@ const optionsArea =
     document.getElementById("optionsArea");
 
 const answerOptions =
-    document.querySelectorAll(".answer-option");
+    Array.from(
+        document.querySelectorAll(
+            ".answer-option"
+        )
+    );
 
 
 const memoryArea =
@@ -241,102 +347,136 @@ const gameStreak =
 const gameLives =
     document.getElementById("gameLives");
 
+const gameLivesLabel =
+    document.getElementById("gameLivesLabel");
+
 const gameCorrect =
     document.getElementById("gameCorrect");
 
 
+const resultTitle =
+    document.getElementById("resultTitle");
 
-/* =========================================================
-   5. LOAD PLAYER DATA
-========================================================= */
+const resultMessage =
+    document.getElementById("resultMessage");
 
-function loadPlayerData() {
+const finalScore =
+    document.getElementById("finalScore");
 
-    const savedData =
-        localStorage.getItem("mindRushPlayer");
+const resultCorrect =
+    document.getElementById("resultCorrect");
 
-    if (savedData) {
+const resultWrong =
+    document.getElementById("resultWrong");
 
-        try {
+const resultAccuracy =
+    document.getElementById("resultAccuracy");
 
-            playerData =
-                JSON.parse(savedData);
-
-        } catch (error) {
-
-            console.log(
-                "Could not load saved player data."
-            );
-
-        }
-
-    }
-
-    updateHomeStats();
-
-    updateProfile();
-
-}
+const resultBestStreak =
+    document.getElementById("resultBestStreak");
 
 
-/* =========================================================
-   6. SAVE PLAYER DATA
-========================================================= */
+const statsGames =
+    document.getElementById("statsGames");
 
-function savePlayerData() {
+const statsBestScore =
+    document.getElementById("statsBestScore");
 
-    localStorage.setItem(
-        "mindRushPlayer",
-        JSON.stringify(playerData)
+const statsAccuracy =
+    document.getElementById("statsAccuracy");
+
+const statsBestStreak =
+    document.getElementById("statsBestStreak");
+
+const achievementText =
+    document.getElementById("achievementText");
+
+
+const profileName =
+    document.getElementById("profileName");
+
+const profileTagline =
+    document.getElementById("profileTagline");
+
+const profileAvatar =
+    document.getElementById("profileAvatar");
+
+const profileAvatarLarge =
+    document.getElementById(
+        "profileAvatarLarge"
     );
 
-}
+const profileLevel =
+    document.getElementById("profileLevel");
+
+const xpBar =
+    document.getElementById("xpBar");
+
+const xpProgress =
+    document.getElementById("xpProgress");
+
+const xpText =
+    document.getElementById("xpText");
+
+
+const homeGames =
+    document.getElementById("homeGames");
+
+const homeScore =
+    document.getElementById("homeScore");
+
+const homeAccuracy =
+    document.getElementById("homeAccuracy");
+
+const homeStreak =
+    document.getElementById("homeStreak");
+
+
+const confirmDialog =
+    document.getElementById("confirmDialog");
+
+const confirmCancel =
+    document.getElementById("confirmCancel");
+
+const confirmAccept =
+    document.getElementById("confirmAccept");
+
+
+/*
+    Every screen switch, in one place, so Escape and
+    the navbar agree on where "back" goes.
+*/
+
+const SCREENS = {
+    home: homeScreen,
+    game: gameScreen,
+    result: resultScreen,
+    stats: statsScreen,
+    profile: profileScreen
+};
+
+let activeScreen = homeScreen;
+
+let pendingConfirmAction = null;
 
 
 /* =========================================================
-   7. SCREEN NAVIGATION
-========================================================= */
-
-function showScreen(screen) {
-
-    const screens = document.querySelectorAll(
-        ".screen"
-    );
-
-    screens.forEach(function(currentScreen) {
-
-        currentScreen.classList.remove(
-            "active"
-        );
-
-    });
-
-    screen.classList.add("active");
-
-    window.scrollTo({
-        top: 0,
-        behavior: "smooth"
-    });
-
-}
-
-
-/* =========================================================
-   8. RANDOM NUMBER
+   6. NUMBER HELPERS
 ========================================================= */
 
 function randomNumber(min, max) {
+
+    if (max < min) {
+
+        return min;
+
+    }
 
     return Math.floor(
         Math.random() * (max - min + 1)
     ) + min;
 
 }
-
-
-/* =========================================================
-   9. RANDOM ITEM FROM ARRAY
-========================================================= */
 
 function randomItem(array) {
 
@@ -348,11 +488,6 @@ function randomItem(array) {
     return array[index];
 
 }
-
-
-/* =========================================================
-   10. SHUFFLE ARRAY
-========================================================= */
 
 function shuffle(array) {
 
@@ -383,6 +518,430 @@ function shuffle(array) {
 
 }
 
+function randomDigitString(length) {
+
+    let digits = "";
+
+    for (
+        let i = 0;
+        i < length;
+        i++
+    ) {
+
+        digits +=
+            randomNumber(0, 9);
+
+    }
+
+    return digits;
+
+}
+
+
+/* =========================================================
+   7. STORAGE
+   ========================================================== */
+
+/*
+    Reading and writing are both wrapped.
+
+    localStorage access itself throws when storage is
+    blocked, and it throws again in some private browsing
+    modes, so the guard has to sit outside the JSON
+    handling rather than inside it.
+*/
+
+function readStoredPlayer() {
+
+    try {
+
+        const raw =
+            window.localStorage.getItem(
+                STORAGE_KEY
+            );
+
+        if (!raw) {
+
+            return null;
+
+        }
+
+        return JSON.parse(raw);
+
+    } catch (error) {
+
+        return null;
+
+    }
+
+}
+
+function writeStoredPlayer() {
+
+    try {
+
+        window.localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(playerData)
+        );
+
+        return true;
+
+    } catch (error) {
+
+        return false;
+
+    }
+
+}
+
+function toCount(value) {
+
+    const number = Number(value);
+
+    if (
+        !Number.isFinite(number) ||
+        number < 0
+    ) {
+
+        return 0;
+
+    }
+
+    return Math.floor(number);
+
+}
+
+function xpRequiredForLevel(level) {
+
+    return level * 100;
+
+}
+
+/*
+    Rebuilds saved data field by field.
+
+    Anything missing, negative, fractional or non-numeric
+    falls back to its default, so a corrupt or
+    hand-edited entry can never render as NaN on screen.
+*/
+
+function normalisePlayerData(raw) {
+
+    const data = { ...DEFAULT_PLAYER_DATA };
+
+    if (
+        !raw ||
+        typeof raw !== "object"
+    ) {
+
+        return data;
+
+    }
+
+    data.gamesPlayed =
+        toCount(raw.gamesPlayed);
+
+    data.bestScore =
+        toCount(raw.bestScore);
+
+    data.totalCorrect =
+        toCount(raw.totalCorrect);
+
+    data.totalQuestions =
+        toCount(raw.totalQuestions);
+
+    data.bestStreak =
+        toCount(raw.bestStreak);
+
+    data.currentStreak =
+        toCount(raw.currentStreak);
+
+    data.xp =
+        toCount(raw.xp);
+
+    data.level =
+        Math.max(1, toCount(raw.level));
+
+    if (
+        typeof raw.name === "string" &&
+        raw.name.trim() !== ""
+    ) {
+
+        data.name =
+            raw.name
+                .trim()
+                .slice(0, 20);
+
+    }
+
+    if (
+        typeof raw.lastPlayedDate ===
+        "string"
+    ) {
+
+        data.lastPlayedDate =
+            raw.lastPlayedDate;
+
+    }
+
+    /*
+        Accuracy can never exceed 100 percent, so a
+        correct count above the total is clamped.
+    */
+
+    if (
+        data.totalCorrect >
+        data.totalQuestions
+    ) {
+
+        data.totalCorrect =
+            data.totalQuestions;
+
+    }
+
+    /*
+        Repairs progress written by the old level-up
+        loop, which reused a stale XP requirement and so
+        could leave a level holding more XP than it took
+        to earn.
+    */
+
+    let guard = 0;
+
+    while (
+        data.xp >= xpRequiredForLevel(data.level) &&
+        guard < 1000
+    ) {
+
+        data.xp -= xpRequiredForLevel(data.level);
+
+        data.level++;
+
+        guard++;
+
+    }
+
+    return data;
+
+}
+
+function loadPlayerData() {
+
+    playerData =
+        normalisePlayerData(
+            readStoredPlayer()
+        );
+
+    updateHomeStats();
+
+    updateProfile();
+
+}
+
+function savePlayerData() {
+
+    writeStoredPlayer();
+
+}
+
+
+/* =========================================================
+   8. SCREEN NAVIGATION
+========================================================= */
+
+function showScreen(screen) {
+
+    if (!screen) {
+
+        return;
+
+    }
+
+    document
+        .querySelectorAll(".screen")
+        .forEach(
+            function(currentScreen) {
+
+                currentScreen.classList.remove(
+                    "active"
+                );
+
+            }
+        );
+
+    screen.classList.add("active");
+
+    activeScreen = screen;
+
+    /*
+        Each screen carries tabindex="-1" so focus can be
+        moved onto it. Without this, a screen reader
+        keeps announcing the screen the player just left
+        and the next Tab jumps back to the navbar.
+    */
+
+    screen.focus({ preventScroll: true });
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+
+}
+
+
+/* =========================================================
+   9. NAVBAR AVAILABILITY
+========================================================= */
+
+/*
+    The navbar is reachable from every screen. During a
+    round that used to mean the player could browse
+    statistics while the clock kept running against them,
+    so the game-owning controls are switched off until
+    the round is resolved.
+*/
+
+const GAME_OWNED_NAV_CONTROLS = [
+    logoButton,
+    statsButton,
+    navStreakButton,
+    profileButton
+];
+
+function setNavEnabled(enabled) {
+
+    GAME_OWNED_NAV_CONTROLS.forEach(
+        function(control) {
+
+            if (!control) {
+
+                return;
+
+            }
+
+            control.disabled = !enabled;
+
+        }
+    );
+
+    if (profileButton) {
+
+        profileButton.setAttribute(
+            "aria-disabled",
+            String(!enabled)
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   10. CONFIRMATION DIALOG
+   ========================================================== */
+
+/*
+    A native <dialog> opened with showModal() supplies
+    the focus trap, the Escape handling and the inert
+    background, none of which a div overlay gets for
+    free.
+*/
+
+function requestConfirmation(action) {
+
+    pendingConfirmAction = action;
+
+    if (
+        typeof confirmDialog.showModal !==
+        "function"
+    ) {
+
+        /*
+            Very old browsers without <dialog>. The
+            blocking prompt is still better than
+            dropping the guard entirely.
+        */
+
+        const confirmed =
+            window.confirm(
+                "Are you sure you want to exit this game?"
+            );
+
+        pendingConfirmAction = null;
+
+        if (confirmed) {
+
+            action();
+
+        }
+
+        return;
+
+    }
+
+    confirmDialog.showModal();
+
+    /*
+        Focus lands on "Keep Playing" so a stray Enter
+        cannot quit the round.
+    */
+
+    confirmCancel.focus();
+
+}
+
+function closeConfirmation() {
+
+    pendingConfirmAction = null;
+
+    if (confirmDialog.open) {
+
+        confirmDialog.close();
+
+    }
+
+}
+
+confirmDialog.addEventListener(
+    "cancel",
+    function(event) {
+
+        event.preventDefault();
+
+        closeConfirmation();
+
+    }
+);
+
+confirmCancel.addEventListener(
+    "click",
+    function() {
+
+        closeConfirmation();
+
+    }
+);
+
+confirmAccept.addEventListener(
+    "click",
+    function() {
+
+        const action =
+            pendingConfirmAction;
+
+        closeConfirmation();
+
+        if (action) {
+
+            action();
+
+        }
+
+    }
+);
+
 
 /* =========================================================
    11. START GAME
@@ -390,56 +949,27 @@ function shuffle(array) {
 
 function startGame(mode) {
 
-    stopTimer();
-
-    clearTimeout(
-        gameState.memoryTimeout
-    );
-
     const config =
         GAME_CONFIG[mode];
 
-    gameState = {
+    if (!config) {
 
-        active: true,
+        return;
 
-        mode: mode,
+    }
 
-        score: 0,
+    stopTimer();
 
-        correct: 0,
+    clearMemoryTimeout();
 
-        wrong: 0,
+    clearNextQuestionTimeout();
 
-        streak: 0,
-
-        bestStreak: 0,
-
-        lives: 3,
-
-        questionNumber: 0,
-
-        timeLeft: config.time,
-
-        totalTime: config.time,
-
-        timer: null,
-
-        questionAnswered: false,
-
-        currentAnswer: null,
-
-        currentQuestion: null,
-
-        memorySequence: "",
-
-        memoryShowing: false,
-
-        memoryTimeout: null
-
-    };
+    gameState =
+        createGameState(mode);
 
     setupGameInterface();
+
+    setNavEnabled(false);
 
     showScreen(gameScreen);
 
@@ -474,20 +1004,43 @@ function setupGameInterface() {
 
     gameStreak.textContent = "0";
 
-    gameLives.textContent = "3";
+    gameLives.textContent =
+        config.usesLives
+            ? "3"
+            : "∞";
+
+    gameLivesLabel.textContent =
+        config.usesLives
+            ? "❤️ Lives"
+            : "No limit";
 
     gameCorrect.textContent = "0";
 
     timerText.textContent =
-        gameState.timeLeft;
+        config.timed
+            ? config.time
+            : "∞";
 
     timerProgress.style.width = "100%";
 
-    feedback.textContent = "";
+    timerBar.setAttribute(
+        "aria-valuenow",
+        "100"
+    );
 
-    feedback.className =
-        "feedback";
+    timerContainer.classList.remove(
+        "is-urgent"
+    );
 
+    clearFeedback();
+
+    questionLabel.textContent = "";
+
+    question.textContent = "";
+
+    questionArea.classList.remove(
+        "hidden"
+    );
 
     inputArea.classList.add("hidden");
 
@@ -495,64 +1048,144 @@ function setupGameInterface() {
 
     memoryArea.classList.add("hidden");
 
+    unlockAnswerInputs();
+
     answerInput.value = "";
 
     memoryInput.value = "";
+
+    resetAnswerOptions();
+
+    /*
+        Practice has neither a clock nor lives, so it
+        needs an explicit way to finish and bank a run.
+    */
+
+    endSessionButton.classList.toggle(
+        "hidden",
+        config.timed
+    );
+
+}
+
+function resetAnswerOptions() {
+
+    answerOptions.forEach(
+        function(button, index) {
+
+            button.disabled = false;
+
+            button.className =
+                "answer-option";
+
+            button.dataset.value = "";
+
+            /*
+                The visible content of an option is an
+                aria-hidden shortcut badge plus an empty
+                slot, so the button would otherwise have
+                no accessible name at all. Until a value
+                is dealt it is announced by position.
+            */
+
+            button.setAttribute(
+                "aria-label",
+                `Answer option ${index + 1}`
+            );
+
+            const value =
+                button.querySelector(
+                    ".option-value"
+                );
+
+            if (value) {
+
+                value.textContent = "";
+
+            }
+
+        }
+    );
+
+}
+
+function unlockAnswerInputs() {
+
+    answerInput.disabled = false;
+
+    submitAnswer.disabled = false;
+
+    memoryInput.disabled = false;
+
+    memorySubmit.disabled = false;
+
+}
+
+function lockAnswerInputs() {
+
+    answerInput.disabled = true;
+
+    submitAnswer.disabled = true;
+
+    memoryInput.disabled = true;
+
+    memorySubmit.disabled = true;
 
 }
 
 
 /* =========================================================
-   13. START TIMER
+   13. TIMER
 ========================================================= */
 
 function startTimer() {
 
     stopTimer();
 
-    if (
-        gameState.mode === "practice"
-    ) {
+    if (!gameState.timed) {
 
-        timerText.textContent =
-            "∞";
+        timerText.textContent = "∞";
 
-        timerProgress.style.width =
-            "100%";
+        timerProgress.style.width = "100%";
 
         return;
 
     }
 
+    gameState.deadline =
+        performance.now() +
+        gameState.totalTime * 1000;
+
     gameState.timer =
-        setInterval(function() {
+        setInterval(
+            tickTimer,
+            100
+        );
 
-            gameState.timeLeft -= 0.1;
-
-            if (
-                gameState.timeLeft <= 0
-            ) {
-
-                gameState.timeLeft = 0;
-
-                updateTimerUI();
-
-                endGame();
-
-                return;
-
-            }
-
-            updateTimerUI();
-
-        }, 100);
+    updateTimerUI();
 
 }
 
+function tickTimer() {
 
-/* =========================================================
-   14. STOP TIMER
-========================================================= */
+    const remaining =
+        (
+            gameState.deadline -
+            performance.now()
+        ) / 1000;
+
+    gameState.timeLeft =
+        Math.max(0, remaining);
+
+    updateTimerUI();
+
+    if (gameState.timeLeft <= 0) {
+
+        endGame();
+
+    }
+
+}
 
 function stopTimer() {
 
@@ -566,14 +1199,17 @@ function stopTimer() {
 
     }
 
+    gameState.deadline = null;
+
 }
 
-
-/* =========================================================
-   15. UPDATE TIMER
-========================================================= */
-
 function updateTimerUI() {
+
+    if (!gameState.timed) {
+
+        return;
+
+    }
 
     const seconds =
         Math.ceil(
@@ -589,93 +1225,159 @@ function updateTimerUI() {
             gameState.totalTime
         ) * 100;
 
-    timerProgress.style.width =
+    const clamped =
         Math.max(
             0,
-            percentage
-        ) + "%";
+            Math.min(100, percentage)
+        );
+
+    timerProgress.style.width =
+        clamped + "%";
+
+    timerBar.setAttribute(
+        "aria-valuenow",
+        String(Math.round(clamped))
+    );
+
+    timerContainer.classList.toggle(
+        "is-urgent",
+        gameState.timeLeft <= URGENT_SECONDS
+    );
 
 }
 
 
 /* =========================================================
-   16. NEXT QUESTION
-========================================================= */
+   14. QUESTION FACTORIES
+   ========================================================== */
 
-function nextQuestion() {
+/*
+    One factory per operation, shared by every mode.
 
-    if (!gameState.active) {
+    The subtraction factory caps the second operand at
+    a - 1, which guarantees a - b stays positive. Three
+    separate copies of the old generator used
+    Math.max(0, a - b) and would happily show
+    "8 - 12 = 0", which teaches the wrong answer.
+*/
 
-        return;
+function makeAddition(maxValue) {
 
-    }
+    const a =
+        randomNumber(1, maxValue);
 
-    gameState.questionNumber++;
+    const b =
+        randomNumber(1, maxValue);
 
-    gameState.questionAnswered =
-        false;
+    return {
+        text: `${a} + ${b}`,
+        answer: a + b
+    };
 
-    questionCounter.textContent =
-        `Question ${gameState.questionNumber}`;
+}
 
-    feedback.textContent = "";
+function makeSubtraction(maxValue) {
 
-    feedback.className =
-        "feedback";
+    const a =
+        randomNumber(2, maxValue);
 
-    answerInput.value = "";
+    const b =
+        randomNumber(
+            1,
+            Math.max(1, a - 1)
+        );
 
-    memoryInput.value = "";
+    return {
+        text: `${a} - ${b}`,
+        answer: a - b
+    };
 
+}
 
-    if (gameState.mode === "quick") {
+function makeMultiplication(maxFactor) {
 
-        createQuickMathQuestion();
+    const a =
+        randomNumber(2, maxFactor);
 
-    }
+    const b =
+        randomNumber(2, 12);
 
-    else if (
-        gameState.mode === "snap"
-    ) {
+    return {
+        text: `${a} × ${b}`,
+        answer: a * b
+    };
 
-        createSnapQuestion();
+}
 
-    }
+function makeDivision(maxQuotient) {
 
-    else if (
-        gameState.mode === "rush"
-    ) {
+    const divisor =
+        randomNumber(2, 10);
 
-        createRushQuestion();
+    const answer =
+        randomNumber(2, maxQuotient);
 
-    }
+    const dividend =
+        divisor * answer;
 
-    else if (
-        gameState.mode === "memory"
-    ) {
+    return {
+        text: `${dividend} ÷ ${divisor}`,
+        answer: answer
+    };
 
-        createMemoryQuestion();
+}
 
-    }
+function getDifficulty() {
 
-    else if (
-        gameState.mode === "practice"
-    ) {
+    const level =
+        Math.floor(
+            gameState.questionNumber / 5
+        );
 
-        createPracticeQuestion();
+    return Math.min(
+        50,
+        10 + level * 5
+    );
 
-    }
+}
+
+function applyQuestion(questionData) {
+
+    gameState.currentAnswer =
+        questionData.answer;
+
+    gameState.currentQuestion =
+        questionData.text;
+
+    question.textContent =
+        questionData.text;
+
+    showInputMode();
+
+    setTimeout(
+        function() {
+
+            if (
+                gameState.active &&
+                !gameState.questionAnswered
+            ) {
+
+                answerInput.focus();
+
+            }
+
+        },
+        50
+    );
 
 }
 
 
 /* =========================================================
-   17. QUICK MATH QUESTION
+   15. QUICK MATH
 ========================================================= */
 
 function createQuickMathQuestion() {
-
-    showInputMode();
 
     const difficulty =
         getDifficulty();
@@ -688,109 +1390,127 @@ function createQuickMathQuestion() {
             "÷"
         ]);
 
-    let a;
-
-    let b;
-
-    let answer;
-
+    let questionData;
 
     if (operation === "+") {
 
-        a = randomNumber(
-            5,
-            difficulty
-        );
-
-        b = randomNumber(
-            5,
-            difficulty
-        );
-
-        answer = a + b;
+        questionData =
+            makeAddition(difficulty);
 
     }
 
+    else if (operation === "-") {
 
-    else if (
-        operation === "-"
-    ) {
-
-        a = randomNumber(
-            10,
-            difficulty + 10
-        );
-
-        b = randomNumber(
-            1,
-            a
-        );
-
-        answer = a - b;
+        questionData =
+            makeSubtraction(
+                difficulty + 10
+            );
 
     }
 
+    else if (operation === "×") {
 
-    else if (
-        operation === "×"
-    ) {
-
-        a = randomNumber(
-            2,
-            Math.min(15, difficulty)
-        );
-
-        b = randomNumber(
-            2,
-            12
-        );
-
-        answer = a * b;
+        questionData =
+            makeMultiplication(
+                Math.min(15, difficulty)
+            );
 
     }
-
 
     else {
 
-        b = randomNumber(
-            2,
-            10
-        );
+        /*
+            Division used to ignore the difficulty value
+            entirely and always produce a two to ten
+            quotient, so it never got harder.
+        */
 
-        answer = randomNumber(
-            2,
-            10
-        );
-
-        a = b * answer;
+        questionData =
+            makeDivision(
+                Math.min(12, difficulty)
+            );
 
     }
-
-
-    gameState.currentAnswer =
-        answer;
-
-    gameState.currentQuestion =
-        `${a} ${operation} ${b}`;
-
-    question.textContent =
-        gameState.currentQuestion;
 
     questionLabel.textContent =
         "Solve this";
 
-
-    setTimeout(function() {
-
-        answerInput.focus();
-
-    }, 50);
+    applyQuestion(questionData);
 
 }
 
+
 /* =========================================================
-   18. SNAP QUESTION
+   16. MIND SNAP
 ========================================================= */
+
+function buildOptions(answer) {
+
+    const options = [answer];
+
+    const spread =
+        Math.max(
+            3,
+            Math.round(answer * 0.3)
+        );
+
+    /*
+        The old loop had no attempt cap, so an answer
+        with a very small pool of valid neighbours could
+        spin. The cap plus the filler below guarantee
+        exactly four options every time.
+    */
+
+    let attempts = 0;
+
+    while (
+        options.length < OPTION_COUNT &&
+        attempts < 200
+    ) {
+
+        attempts++;
+
+        const offset =
+            randomNumber(1, spread);
+
+        const fake =
+            Math.random() > 0.5
+                ? answer + offset
+                : answer - offset;
+
+        if (
+            fake >= 0 &&
+            !options.includes(fake)
+        ) {
+
+            options.push(fake);
+
+        }
+
+    }
+
+    let filler =
+        answer + OPTION_COUNT;
+
+    while (
+        options.length < OPTION_COUNT
+    ) {
+
+        if (
+            !options.includes(filler)
+        ) {
+
+            options.push(filler);
+
+        }
+
+        filler += 1;
+
+    }
+
+    return shuffle(options);
+
+}
 
 function createSnapQuestion() {
 
@@ -810,108 +1530,91 @@ function createSnapQuestion() {
             "×"
         ]);
 
-    let a =
-        randomNumber(
-            2,
-            difficulty
-        );
-
-    let b =
-        randomNumber(
-            2,
-            12
-        );
-
-    let answer;
-
+    let questionData;
 
     if (operation === "+") {
 
-        answer = a + b;
+        questionData =
+            makeAddition(difficulty);
 
     }
 
-    else if (
-        operation === "-"
-    ) {
+    else if (operation === "-") {
 
-        if (b > a) {
-
-            [a, b] = [b, a];
-
-        }
-
-        answer = a - b;
+        questionData =
+            makeSubtraction(difficulty);
 
     }
 
     else {
 
-        answer = a * b;
+        questionData =
+            makeMultiplication(
+                Math.min(15, difficulty)
+            );
 
     }
 
-
     gameState.currentAnswer =
-        answer;
+        questionData.answer;
 
     gameState.currentQuestion =
-        `${a} ${operation} ${b}`;
+        questionData.text;
 
     question.textContent =
-        gameState.currentQuestion;
+        questionData.text;
 
     questionLabel.textContent =
         "Choose the correct answer";
 
-
-    let options = [
-        answer
-    ];
-
-
-    while (
-        options.length < 4
-    ) {
-
-        const difference =
-            randomNumber(
-                1,
-                Math.max(5, Math.floor(answer * 0.25))
-            );
-
-        const fake =
-            Math.random() > 0.5
-                ? answer + difference
-                : answer - difference;
-
-
-        if (
-            fake >= 0 &&
-            !options.includes(fake)
-        ) {
-
-            options.push(fake);
-
-        }
-
-    }
-
-
-    options =
-        shuffle(options);
-
+    const options =
+        buildOptions(
+            questionData.answer
+        );
 
     answerOptions.forEach(
         function(button, index) {
 
-            button.textContent =
+            const value =
                 options[index];
+
+            button.dataset.value =
+                String(value);
+
+            /*
+                Only the value slot is rewritten.
+                Clearing the button wholesale would
+                also delete the shortcut badge and
+                leave the card without a number key.
+            */
+
+            const slot =
+                button.querySelector(
+                    ".option-value"
+                );
+
+            if (slot) {
+
+                slot.textContent =
+                    value;
+
+            }
+
+            /*
+                The badge is hidden from assistive tech
+                and the slot is empty markup, so the
+                value has to be named explicitly.
+            */
+
+            button.setAttribute(
+                "aria-label",
+                `Answer option ${index + 1}: ${value}`
+            );
+
+            button.disabled = false;
 
             button.className =
                 "answer-option";
-
-            button.disabled = false;
 
         }
     );
@@ -920,99 +1623,16 @@ function createSnapQuestion() {
 
 
 /* =========================================================
-   19. NUMBER RUSH QUESTION
+   17. NUMBER RUSH
 ========================================================= */
 
 function createRushQuestion() {
 
-    showInputMode();
-
     const difficulty =
         getDifficulty();
 
-    const a =
-        randomNumber(
-            10,
-            difficulty + 15
-        );
-
-    const b =
-        randomNumber(
-            2,
-            12
-        );
-
-    const operations = [
-        "+",
-        "-",
-        "×"
-    ];
-
-    const operation =
-        randomItem(operations);
-
-    let answer;
-
-
-    if (operation === "+") {
-
-        answer = a + b;
-
-    }
-
-    else if (
-        operation === "-"
-    ) {
-
-        answer =
-            Math.max(
-                0,
-                a - b
-            );
-
-    }
-
-    else {
-
-        answer = a * b;
-
-    }
-
-
-    gameState.currentAnswer =
-        answer;
-
-    gameState.currentQuestion =
-        `${a} ${operation} ${b}`;
-
-    question.textContent =
-        gameState.currentQuestion;
-
-    questionLabel.textContent =
-        "Keep your streak alive";
-
-}
-
-
-/* =========================================================
-   20. PRACTICE QUESTION
-========================================================= */
-
-function createPracticeQuestion() {
-
-    showInputMode();
-
-    const a =
-        randomNumber(
-            1,
-            50
-        );
-
-    const b =
-        randomNumber(
-            1,
-            30
-        );
+    const maxValue =
+        difficulty + 15;
 
     const operation =
         randomItem([
@@ -1021,99 +1641,158 @@ function createPracticeQuestion() {
             "×"
         ]);
 
-    let answer;
-
+    let questionData;
 
     if (operation === "+") {
 
-        answer = a + b;
+        questionData =
+            makeAddition(maxValue);
 
     }
 
-    else if (
-        operation === "-"
-    ) {
+    else if (operation === "-") {
 
-        answer =
-            Math.max(
-                0,
-                a - b
-            );
+        questionData =
+            makeSubtraction(maxValue);
 
     }
 
     else {
 
-        answer = a * b;
+        questionData =
+            makeMultiplication(
+                Math.min(15, difficulty)
+            );
 
     }
 
-
-    gameState.currentAnswer =
-        answer;
-
-    gameState.currentQuestion =
-        `${a} ${operation} ${b}`;
-
-    question.textContent =
-        gameState.currentQuestion;
-
     questionLabel.textContent =
-        "Practice";
+        "Keep your streak alive";
+
+    applyQuestion(questionData);
 
 }
 
 
 /* =========================================================
-   21. MEMORY QUESTION
+   18. PRACTICE
 ========================================================= */
+
+function createPracticeQuestion() {
+
+    const operation =
+        randomItem([
+            "+",
+            "-",
+            "×"
+        ]);
+
+    let questionData;
+
+    if (operation === "+") {
+
+        questionData =
+            makeAddition(50);
+
+    }
+
+    else if (operation === "-") {
+
+        questionData =
+            makeSubtraction(50);
+
+    }
+
+    else {
+
+        questionData =
+            makeMultiplication(12);
+
+    }
+
+    questionLabel.textContent =
+        "Practice";
+
+    applyQuestion(questionData);
+
+}
+
+
+/* =========================================================
+   19. MEMORY NUMBERS
+========================================================= */
+
+function memoryLengthForQuestion(index) {
+
+    /*
+        Was 4 + floor(n / 2) capped at 10, which asked for
+        ten digits inside a 45 second round. The climb is
+        slower and the ceiling is lower.
+    */
+
+    return Math.min(
+        4 +
+        Math.floor(
+            index / 3
+        ),
+        8
+    );
+
+}
 
 function createMemoryQuestion() {
 
     hideInputMode();
+
+    /*
+        The equation area is hidden here. It used to keep
+        whatever the previous mode had last rendered, so
+        Memory Numbers opened under a stale "7 + 5".
+    */
+
+    questionArea.classList.add("hidden");
 
     memoryArea.classList.remove(
         "hidden"
     );
 
     const length =
-        Math.min(
-            4 +
-            Math.floor(
-                gameState.questionNumber / 2
-            ),
-
-            10
+        memoryLengthForQuestion(
+            gameState.questionNumber
         );
 
-
-
-    let sequence = "";
-
-    for (
-        let i = 0;
-        i < length;
-        i++
-    ) {
-
-        sequence +=
-            randomNumber(0, 9);
-
-    }
-
+    const sequence =
+        randomDigitString(length);
 
     gameState.memorySequence =
+        sequence;
+
+    /*
+        Storing the sequence as the answer keeps the
+        generic wrong-answer message honest. It used to
+        be left null here, which printed
+        "Wrong! Answer: null".
+    */
+
+    gameState.currentAnswer =
+        sequence;
+
+    gameState.currentQuestion =
         sequence;
 
     gameState.memoryShowing =
         true;
 
+    questionLabel.textContent =
+        "Remember the digits";
+
     memoryNumber.textContent =
         sequence;
 
     memoryInstruction.textContent =
-        "Remember this number...";
+        `Memorise ${length} digits, then type them back.`;
 
+    memoryInput.value = "";
 
     memoryInput.classList.add(
         "hidden"
@@ -1123,39 +1802,72 @@ function createMemoryQuestion() {
         "hidden"
     );
 
+    clearMemoryTimeout();
 
     gameState.memoryTimeout =
-        setTimeout(function() {
+        setTimeout(
+            revealMemoryInput,
+            MEMORY_SHOW_MS
+        );
 
-            memoryNumber.textContent =
-                "••••••";
+}
 
-            memoryInstruction.textContent =
-                "Now enter the number";
+function revealMemoryInput() {
 
-            memoryInput.classList.remove(
-                "hidden"
-            );
+    /*
+        The mask used to be a fixed six bullets whatever
+        the length was, so a four digit sequence was shown
+        as six and a ten digit one as six.
+    */
 
-            memorySubmit.classList.remove(
-                "hidden"
-            );
+    memoryNumber.textContent =
+        "•".repeat(
+            gameState.memorySequence.length
+        );
 
-            memoryInput.focus();
+    memoryInstruction.textContent =
+        "Now type the number you saw";
 
-            gameState.memoryShowing =
-                false;
+    memoryInput.classList.remove(
+        "hidden"
+    );
 
-        }, 1800);
+    memorySubmit.classList.remove(
+        "hidden"
+    );
+
+    gameState.memoryShowing =
+        false;
+
+    memoryInput.focus();
+
+}
+
+function clearMemoryTimeout() {
+
+    if (gameState.memoryTimeout) {
+
+        clearTimeout(
+            gameState.memoryTimeout
+        );
+
+        gameState.memoryTimeout =
+            null;
+
+    }
 
 }
 
 
 /* =========================================================
-   22. SHOW INPUT MODE
+   20. NEXT QUESTION
 ========================================================= */
 
 function showInputMode() {
+
+    questionArea.classList.remove(
+        "hidden"
+    );
 
     inputArea.classList.remove(
         "hidden"
@@ -1171,97 +1883,194 @@ function showInputMode() {
 
 }
 
-
-/* =========================================================
-   23. HIDE INPUT MODE
-========================================================= */
-
 function hideInputMode() {
 
     inputArea.classList.add(
         "hidden"
     );
 
+    submitAnswer.disabled = true;
+
 }
 
+function clearNextQuestionTimeout() {
 
-/* =========================================================
-   24. GET DIFFICULTY
-========================================================= */
+    if (gameState.nextQuestionTimeout) {
 
-function getDifficulty() {
-
-    const level =
-        Math.floor(
-            gameState.questionNumber / 5
+        clearTimeout(
+            gameState.nextQuestionTimeout
         );
 
-    return Math.min(
-        50,
-        10 + level * 5
-    );
+        gameState.nextQuestionTimeout =
+            null;
+
+    }
 
 }
 
+function queueNextQuestion(delay) {
 
-/* =========================================================
-   25. SUBMIT TEXT ANSWER
-========================================================= */
+    clearNextQuestionTimeout();
 
-function submitCurrentAnswer() {
+    gameState.nextQuestionTimeout =
+        setTimeout(
+            function() {
 
-    if (
-        !gameState.active
-    ) {
+                if (!gameState.active) {
+
+                    return;
+
+                }
+
+                /*
+                    Without this the round advanced one
+                    last time after the last life was
+                    spent, briefly showing a fresh question
+                    behind the results screen.
+                */
+
+                if (
+                    gameState.lives <= 0 &&
+                    gameState.usesLives
+                ) {
+
+                    return;
+
+                }
+
+                nextQuestion();
+
+            },
+            delay
+        );
+
+}
+
+function nextQuestion() {
+
+    if (!gameState.active) {
 
         return;
 
     }
 
-    if (
-        gameState.questionAnswered
-    ) {
+    gameState.questionNumber++;
+
+    gameState.questionAnswered =
+        false;
+
+    questionCounter.textContent =
+        `Question ${gameState.questionNumber}`;
+
+    clearFeedback();
+
+    unlockAnswerInputs();
+
+    answerInput.value = "";
+
+    memoryInput.value = "";
+
+    const mode =
+        gameState.mode;
+
+    if (mode === "quick") {
+
+        createQuickMathQuestion();
+
+    }
+
+    else if (mode === "snap") {
+
+        createSnapQuestion();
+
+    }
+
+    else if (mode === "rush") {
+
+        createRushQuestion();
+
+    }
+
+    else if (mode === "memory") {
+
+        createMemoryQuestion();
+
+    }
+
+    else {
+
+        createPracticeQuestion();
+
+    }
+
+}
+
+
+/* =========================================================
+   21. SUBMIT TYPED ANSWER
+   ========================================================== */
+
+function parseAnswer(value) {
+
+    const digits =
+        value.replace(/\D/g, "");
+
+    if (digits === "") {
+
+        return null;
+
+    }
+
+    const number =
+        Number(digits);
+
+    if (!Number.isFinite(number)) {
+
+        return null;
+
+    }
+
+    return number;
+
+}
+
+function submitCurrentAnswer() {
+
+    if (!gameState.active) {
+
+        return;
+
+    }
+
+    if (gameState.questionAnswered) {
 
         return;
 
     }
 
     const value =
-        Number(
-            answerInput.value
-        );
+        parseAnswer(answerInput.value);
 
-
-    if (
-        answerInput.value.trim() === ""
-    ) {
+    if (value === null) {
 
         showFeedback(
             "Type an answer first.",
             "wrong"
         );
 
+        answerInput.focus();
+
         return;
 
     }
 
-
-    checkAnswer(
-        value
-    );
+    checkAnswer(value);
 
 }
 
-
-/* =========================================================
-   26. CHECK ANSWER
-========================================================= */
-
 function checkAnswer(answer) {
 
-    if (
-        gameState.questionAnswered
-    ) {
+    if (gameState.questionAnswered) {
 
         return;
 
@@ -1270,13 +2079,12 @@ function checkAnswer(answer) {
     gameState.questionAnswered =
         true;
 
+    lockAnswerInputs();
 
-    const correct =
+    if (
         Number(answer) ===
-        Number(gameState.currentAnswer);
-
-
-    if (correct) {
+        Number(gameState.currentAnswer)
+    ) {
 
         handleCorrect();
 
@@ -1288,31 +2096,17 @@ function checkAnswer(answer) {
 
     }
 
-
-    setTimeout(
-        function() {
-
-            if (
-                gameState.active
-            ) {
-
-                nextQuestion();
-
-            }
-
-        },
-
-        gameState.mode === "practice"
-            ? 500
-            : 650
-
+    queueNextQuestion(
+        gameState.timed
+            ? 650
+            : 500
     );
 
 }
 
 
 /* =========================================================
-   27. CORRECT ANSWER
+   22. CORRECT ANSWER
 ========================================================= */
 
 function handleCorrect() {
@@ -1320,7 +2114,6 @@ function handleCorrect() {
     gameState.correct++;
 
     gameState.streak++;
-
 
     if (
         gameState.streak >
@@ -1332,14 +2125,7 @@ function handleCorrect() {
 
     }
 
-
-    let points =
-        10;
-
-
-    /*
-        Streak bonus
-    */
+    let points = 10;
 
     points +=
         Math.min(
@@ -1347,13 +2133,8 @@ function handleCorrect() {
             30
         );
 
-
-    /*
-        Speed bonus
-    */
-
     if (
-        gameState.mode !== "practice" &&
+        gameState.timed &&
         gameState.timeLeft > 0
     ) {
 
@@ -1364,143 +2145,159 @@ function handleCorrect() {
 
     }
 
-
     gameState.score +=
         points;
 
-
     updateGameUI();
-
 
     showFeedback(
         `Correct! +${points} points`,
         "correct"
     );
 
-
     playCorrectSound();
 
-
-    /*
-        Add XP
-    */
-
-    addXP(
-        5
-    );
+    addXP(5);
 
 }
 
-
-/* =========================================================
-   28. WRONG ANSWER
-========================================================= */
-
-function handleWrong() {
+function handleWrong(detail) {
 
     gameState.wrong++;
 
     gameState.streak = 0;
 
-    gameState.lives--;
+    /*
+        Only the modes that actually have lives spend
+        them. Practice kept decrementing here, which
+        drifted the counter away from the number the
+        state was created with.
+    */
 
+    if (gameState.usesLives) {
+
+        gameState.lives--;
+
+    }
 
     updateGameUI();
 
+    /*
+        The detail argument lets Memory Numbers say
+        which number it was without the caller also
+        writing its own message. Previously the memory
+        handler printed "Wrong! It was 4931" and then
+        the shared handler immediately overwrote it with
+        "Wrong! Answer: null".
+    */
 
     showFeedback(
-        `Wrong! Answer: ${gameState.currentAnswer}`,
+        detail
+            ? `Wrong! ${detail}`
+            : `Wrong! Answer: ${gameState.currentAnswer}`,
         "wrong"
     );
 
-
     playWrongSound();
 
-
-    /*
-        Shake game card
-    */
-
-    const card =
-        document.querySelector(
-            ".game-card"
-        );
-
-    card.classList.add(
-        "shake"
-    );
-
-
-    setTimeout(function() {
-
-        card.classList.remove(
-            "shake"
-        );
-
-    }, 300);
-
-
-    /*
-        End if no lives
-    */
+    shakeGameCard();
 
     if (
         gameState.lives <= 0 &&
-        gameState.mode !== "practice"
+        gameState.usesLives
     ) {
 
         setTimeout(
             endGame,
-            500
+            650
         );
 
     }
 
 }
 
+function shakeGameCard() {
+
+    if (!gameCard) {
+
+        return;
+
+    }
+
+    gameCard.classList.remove(
+        "shake"
+    );
+
+    /*
+        Reading layout forces the class change to be
+        observed, so two wrong answers in quick
+        succession both animate.
+    */
+
+    void gameCard.offsetWidth;
+
+    gameCard.classList.add(
+        "shake"
+    );
+
+    setTimeout(
+        function() {
+
+            gameCard.classList.remove(
+                "shake"
+            );
+
+        },
+        320
+    );
+
+}
+
 
 /* =========================================================
-   29. MEMORY ANSWER
-========================================================= */
+   23. MEMORY ANSWER
+   ========================================================== */
 
 function submitMemoryAnswer() {
 
-    if (
-        gameState.memoryShowing
-    ) {
+    if (!gameState.active) {
 
         return;
 
     }
 
-    if (
-        gameState.questionAnswered
-    ) {
+    if (gameState.memoryShowing) {
 
         return;
 
     }
 
+    if (gameState.questionAnswered) {
+
+        return;
+
+    }
 
     const answer =
         memoryInput.value.trim();
 
-
-    if (!answer) {
+    if (answer === "") {
 
         showFeedback(
-            "Enter the number.",
+            "Type the number first.",
             "wrong"
         );
+
+        memoryInput.focus();
 
         return;
 
     }
 
-
     gameState.questionAnswered =
         true;
 
+    lockAnswerInputs();
 
     if (
         answer ===
@@ -1513,55 +2310,52 @@ function submitMemoryAnswer() {
 
     else {
 
-        showFeedback(
-            `Wrong! It was ${gameState.memorySequence}`,
-            "wrong"
+        handleWrong(
+            `It was ${gameState.memorySequence}`
         );
-
-        handleWrong();
 
     }
 
-
-    setTimeout(
-        function() {
-
-            if (
-                gameState.active
-            ) {
-
-                nextQuestion();
-
-            }
-
-        },
-
-        700
-    );
+    queueNextQuestion(700);
 
 }
 
 
 /* =========================================================
-   30. OPTION ANSWER
-========================================================= */
+   24. OPTION ANSWER
+   ========================================================== */
 
 function selectOption(button) {
 
-    if (
-        gameState.questionAnswered
-    ) {
+    if (!gameState.active) {
 
         return;
 
     }
 
+    if (gameState.questionAnswered) {
+
+        return;
+
+    }
 
     const selected =
         Number(
-            button.textContent
+            button.dataset.value
         );
 
+    const answer =
+        Number(gameState.currentAnswer);
+
+    gameState.questionAnswered =
+        true;
+
+    /*
+        The value is read from the dataset rather than
+        from the button text, because the button now also
+        holds the shortcut badge. Parsing textContent
+        would have turned the badge into the answer.
+    */
 
     answerOptions.forEach(
         function(currentButton) {
@@ -1569,22 +2363,41 @@ function selectOption(button) {
             currentButton.disabled =
                 true;
 
+            currentButton.classList.remove(
+                "correct"
+            );
+
+            currentButton.classList.remove(
+                "wrong"
+            );
+
+            const value =
+                Number(
+                    currentButton.dataset.value
+                );
+
+            if (value === answer) {
+
+                currentButton.classList.add(
+                    "correct"
+                );
+
+            }
+
+            else if (
+                currentButton === button
+            ) {
+
+                currentButton.classList.add(
+                    "wrong"
+                );
+
+            }
+
         }
     );
 
-
-    gameState.questionAnswered =
-        true;
-
-
-    if (
-        selected ===
-        gameState.currentAnswer
-    ) {
-
-        button.classList.add(
-            "correct"
-        );
+    if (selected === answer) {
 
         handleCorrect();
 
@@ -1592,58 +2405,27 @@ function selectOption(button) {
 
     else {
 
-        button.classList.add(
-            "wrong"
-        );
-
-
-        answerOptions.forEach(
-            function(currentButton) {
-
-                if (
-                    Number(
-                        currentButton.textContent
-                    ) ===
-                    gameState.currentAnswer
-                ) {
-
-                    currentButton.classList.add(
-                        "correct"
-                    );
-
-                }
-
-            }
-        );
-
-
         handleWrong();
 
     }
 
-
-    setTimeout(
-        function() {
-
-            if (
-                gameState.active
-            ) {
-
-                nextQuestion();
-
-            }
-
-        },
-
-        700
-    );
+    queueNextQuestion(700);
 
 }
 
 
 /* =========================================================
-   31. FEEDBACK
-========================================================= */
+   25. FEEDBACK
+   ========================================================== */
+
+function clearFeedback() {
+
+    feedback.textContent = "";
+
+    feedback.className =
+        "feedback";
+
+}
 
 function showFeedback(
     message,
@@ -1658,11 +2440,6 @@ function showFeedback(
 
 }
 
-
-/* =========================================================
-   32. UPDATE GAME UI
-========================================================= */
-
 function updateGameUI() {
 
     gameScore.textContent =
@@ -1672,7 +2449,24 @@ function updateGameUI() {
         gameState.streak;
 
     gameLives.textContent =
-        gameState.lives;
+        gameState.usesLives
+            ? Math.max(
+                    0,
+                    gameState.lives
+                )
+            : "∞";
+
+    /*
+        Practice is endless, so a draining counter
+        read as a failure the player never actually
+        made. It now mirrors the untimed clock, which
+        already shows an infinity sign.
+    */
+
+    gameLivesLabel.textContent =
+        gameState.usesLives
+            ? "❤️ Lives"
+            : "No limit";
 
     gameCorrect.textContent =
         gameState.correct;
@@ -1681,34 +2475,56 @@ function updateGameUI() {
 
 
 /* =========================================================
-   33. END GAME
-========================================================= */
+   26. END GAME
+   ========================================================== */
 
 function endGame() {
 
-    if (
-        !gameState.active
-    ) {
+    if (!gameState.active) {
 
         return;
 
     }
 
+    gameState.active =
+        false;
+
+    stopTimer();
+
+    clearMemoryTimeout();
+
+    clearNextQuestionTimeout();
+
+    unlockAnswerInputs();
+
+    bankResult();
+
+    setNavEnabled(true);
+
+    showResults();
+
+}
+
+function abandonGame() {
 
     gameState.active =
         false;
 
-
     stopTimer();
 
-    clearTimeout(
-        gameState.memoryTimeout
-    );
+    clearMemoryTimeout();
 
+    clearNextQuestionTimeout();
 
-    /*
-        Save player statistics
-    */
+    unlockAnswerInputs();
+
+    setNavEnabled(true);
+
+    showScreen(SCREENS.home);
+
+}
+
+function bankResult() {
 
     playerData.gamesPlayed++;
 
@@ -1718,7 +2534,6 @@ function endGame() {
     playerData.totalQuestions +=
         gameState.correct +
         gameState.wrong;
-
 
     if (
         gameState.score >
@@ -1730,7 +2545,6 @@ function endGame() {
 
     }
 
-
     if (
         gameState.bestStreak >
         playerData.bestStreak
@@ -1741,19 +2555,16 @@ function endGame() {
 
     }
 
-
     updateDailyStreak();
+
+    /*
+        One write per finished round instead of one per
+        answered question.
+    */
 
     savePlayerData();
 
-    showResults();
-
 }
-
-
-/* =========================================================
-   34. SHOW RESULTS
-========================================================= */
 
 function showResults() {
 
@@ -1761,67 +2572,30 @@ function showResults() {
         gameState.correct +
         gameState.wrong;
 
-
-    let accuracy = 0;
-
-
-    if (total > 0) {
-
-        accuracy =
-            Math.round(
+    const accuracy =
+        total > 0
+            ? Math.round(
                 (
                     gameState.correct /
                     total
                 ) * 100
-            );
+            )
+            : 0;
 
-    }
-
-
-    document.getElementById(
-        "finalScore"
-    ).textContent =
+    finalScore.textContent =
         gameState.score;
 
-
-    document.getElementById(
-        "resultCorrect"
-    ).textContent =
+    resultCorrect.textContent =
         gameState.correct;
 
-
-    document.getElementById(
-        "resultWrong"
-    ).textContent =
+    resultWrong.textContent =
         gameState.wrong;
 
-
-    document.getElementById(
-        "resultAccuracy"
-    ).textContent =
+    resultAccuracy.textContent =
         accuracy + "%";
 
-
-    document.getElementById(
-        "resultBestStreak"
-    ).textContent =
+    resultBestStreak.textContent =
         gameState.bestStreak;
-
-
-    /*
-        Result message
-    */
-
-    const resultTitle =
-        document.getElementById(
-            "resultTitle"
-        );
-
-    const resultMessage =
-        document.getElementById(
-            "resultMessage"
-        );
-
 
     if (accuracy >= 90) {
 
@@ -1863,25 +2637,94 @@ function showResults() {
 
     }
 
-
     updateHomeStats();
 
-    showScreen(resultScreen);
+    updateStatsScreen();
+
+    updateProfile();
+
+    showScreen(SCREENS.result);
 
 }
 
 
 /* =========================================================
-   35. DAILY STREAK
-========================================================= */
+   27. DAILY STREAK
+   ========================================================== */
+
+/*
+    Local calendar day, not UTC.
+
+    toISOString() was used before, which reports the
+    UTC date. For anyone west of Greenwich that
+    mislabels the day near midnight, so a streak could
+    break or double for no reason.
+*/
+
+function localDateKey(date) {
+
+    const year =
+        date.getFullYear();
+
+    const month =
+        String(
+            date.getMonth() + 1
+        ).padStart(2, "0");
+
+    const day =
+        String(
+            date.getDate()
+        ).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+
+}
+
+function isStreakAlive() {
+
+    if (
+        playerData.currentStreak <= 0 ||
+        !playerData.lastPlayedDate
+    ) {
+
+        return false;
+
+    }
+
+    const today =
+        localDateKey(
+            new Date()
+        );
+
+    if (
+        playerData.lastPlayedDate ===
+        today
+    ) {
+
+        return true;
+
+    }
+
+    const yesterday =
+        new Date();
+
+    yesterday.setDate(
+        yesterday.getDate() - 1
+    );
+
+    return (
+        playerData.lastPlayedDate ===
+        localDateKey(yesterday)
+    );
+
+}
 
 function updateDailyStreak() {
 
     const today =
-        new Date()
-            .toISOString()
-            .split("T")[0];
-
+        localDateKey(
+            new Date()
+        );
 
     if (
         playerData.lastPlayedDate ===
@@ -1892,421 +2735,486 @@ function updateDailyStreak() {
 
     }
 
-
     const yesterday =
         new Date();
-
 
     yesterday.setDate(
         yesterday.getDate() - 1
     );
 
-
-    const yesterdayString =
-        yesterday
-            .toISOString()
-            .split("T")[0];
-
-
-    if (
+    playerData.currentStreak =
         playerData.lastPlayedDate ===
-        yesterdayString
-    ) {
-
-        playerData.currentStreak++;
-
-    }
-
-    else {
-
-        playerData.currentStreak =
-            1;
-
-    }
-
+        localDateKey(yesterday)
+            ? playerData.currentStreak + 1
+            : 1;
 
     playerData.lastPlayedDate =
         today;
-
-
-    savePlayerData();
 
 }
 
 
 /* =========================================================
-   36. ADD XP
-========================================================= */
+   28. XP AND LEVEL
+   ========================================================== */
 
 function addXP(amount) {
 
-    playerData.xp += amount;
+    playerData.xp +=
+        amount;
 
+    /*
+        The requirement is recalculated every pass.
+        The old loop hoisted it out of the while, so it
+        never grew with the level: one call could jump
+        from level 1 straight past level 3 while still
+        charging the flat level 1 cost.
+    */
 
-    const requiredXP =
-        playerData.level * 100;
-
+    let guard = 0;
 
     while (
         playerData.xp >=
-        requiredXP
+            xpRequiredForLevel(
+                playerData.level
+            ) &&
+        guard < 1000
     ) {
 
         playerData.xp -=
-            requiredXP;
+            xpRequiredForLevel(
+                playerData.level
+            );
 
         playerData.level++;
 
+        guard++;
+
     }
-
-
-    savePlayerData();
 
     updateProfile();
 
 }
 
+function describeTagline() {
 
-/* =========================================================
-   37. UPDATE PROFILE
-========================================================= */
+    const played =
+        playerData.gamesPlayed;
+
+    if (played === 0) {
+
+        return "Brain training enthusiast";
+
+    }
+
+    if (played < 5) {
+
+        return "Just getting started";
+
+    }
+
+    if (played < 25) {
+
+        return "Building momentum";
+
+    }
+
+    if (played < 100) {
+
+        return "Sharpening your mind";
+
+    }
+
+    return "Brain training master";
+
+}
 
 function updateProfile() {
 
     const level =
         playerData.level;
 
+    const required =
+        xpRequiredForLevel(level);
 
-    document.getElementById(
-        "profileLevel"
-    ).textContent =
+    const initial =
+        playerData.name
+            .charAt(0)
+            .toUpperCase() ||
+        "P";
+
+    profileName.textContent =
+        playerData.name;
+
+    profileTagline.textContent =
+        describeTagline();
+
+    profileAvatar.textContent =
+        initial;
+
+    profileAvatarLarge.textContent =
+        initial;
+
+    profileLevel.textContent =
         level;
 
-
-    const required =
-        level * 100;
-
-
     const percentage =
-        (
-            playerData.xp /
-            required
-        ) * 100;
+        Math.max(
+            0,
+            Math.min(
+                100,
+                (
+                    playerData.xp /
+                    required
+                ) * 100
+            )
+        );
 
-
-    document.getElementById(
-        "xpProgress"
-    ).style.width =
+    xpProgress.style.width =
         percentage + "%";
 
+    xpBar.setAttribute(
+        "aria-valuenow",
+        String(Math.round(percentage))
+    );
 
-    document.getElementById(
-        "xpText"
-    ).textContent =
+    xpText.textContent =
         `${playerData.xp} / ${required} XP`;
 
-
-    document.getElementById(
-        "navStreak"
-    ).textContent =
-        playerData.currentStreak;
+    updateStreakDisplay();
 
 }
 
+function accuracyFromTotals() {
 
-/* =========================================================
-   38. UPDATE HOME STATS
-========================================================= */
+    if (
+        playerData.totalQuestions <= 0
+    ) {
+
+        return 0;
+
+    }
+
+    return Math.round(
+        (
+            playerData.totalCorrect /
+            playerData.totalQuestions
+        ) * 100
+    );
+
+}
+
+function updateStreakDisplay() {
+
+    const shown =
+        isStreakAlive()
+            ? playerData.currentStreak
+            : 0;
+
+    homeStreak.textContent =
+        `${shown} days`;
+
+    navStreak.textContent =
+        shown;
+
+}
 
 function updateHomeStats() {
 
-    document.getElementById(
-        "homeGames"
-    ).textContent =
+    homeGames.textContent =
         playerData.gamesPlayed;
 
-
-    document.getElementById(
-        "homeScore"
-    ).textContent =
+    homeScore.textContent =
         playerData.bestScore;
 
+    homeAccuracy.textContent =
+        accuracyFromTotals() + "%";
 
-    let accuracy = 0;
-
-
-    if (
-        playerData.totalQuestions > 0
-    ) {
-
-        accuracy =
-            Math.round(
-                (
-                    playerData.totalCorrect /
-                    playerData.totalQuestions
-                ) * 100
-            );
-
-    }
-
-
-    document.getElementById(
-        "homeAccuracy"
-    ).textContent =
-        accuracy + "%";
-
-
-    document.getElementById(
-        "homeStreak"
-    ).textContent =
-        `${playerData.currentStreak} days`;
-
-
-    document.getElementById(
-        "navStreak"
-    ).textContent =
-        playerData.currentStreak;
+    updateStreakDisplay();
 
 }
 
 
 /* =========================================================
-   39. UPDATE STATS SCREEN
-========================================================= */
+   29. STATS SCREEN
+   ========================================================== */
 
 function updateStatsScreen() {
 
-    document.getElementById(
-        "statsGames"
-    ).textContent =
+    statsGames.textContent =
         playerData.gamesPlayed;
 
-
-    document.getElementById(
-        "statsBestScore"
-    ).textContent =
+    statsBestScore.textContent =
         playerData.bestScore;
 
+    statsAccuracy.textContent =
+        accuracyFromTotals() + "%";
 
-    let accuracy = 0;
-
-
-    if (
-        playerData.totalQuestions > 0
-    ) {
-
-        accuracy =
-            Math.round(
-                (
-                    playerData.totalCorrect /
-                    playerData.totalQuestions
-                ) * 100
-            );
-
-    }
-
-
-    document.getElementById(
-        "statsAccuracy"
-    ).textContent =
-        accuracy + "%";
-
-
-    document.getElementById(
-        "statsBestStreak"
-    ).textContent =
+    statsBestStreak.textContent =
         playerData.bestStreak;
 
+    achievementText.textContent =
+        describeAchievement();
 
-    /*
-        Achievements
-    */
+}
 
-    const achievementText =
-        document.getElementById(
-            "achievementText"
-        );
-
+function describeAchievement() {
 
     if (
         playerData.gamesPlayed >= 100
     ) {
 
-        achievementText.textContent =
-            "🏆 Century Player — 100 games completed!";
+        return "🏆 Century Player — 100 games completed!";
 
     }
 
-    else if (
+    if (
         playerData.bestScore >= 1000
     ) {
 
-        achievementText.textContent =
-            "⭐ Score Master — 1000+ points!";
+        return "⭐ Score Master — 1000+ points!";
 
     }
 
-    else if (
+    if (
         playerData.bestStreak >= 20
     ) {
 
-        achievementText.textContent =
-            "🔥 Streak Master — 20 correct answers!";
+        return "🔥 Streak Master — 20 correct answers in a row!";
 
     }
 
-    else if (
+    if (
         playerData.gamesPlayed >= 10
     ) {
 
-        achievementText.textContent =
-            "🎮 Getting Serious — 10 games completed!";
+        return "🎮 Getting Serious — 10 games completed!";
 
     }
 
-    else if (
+    if (
         playerData.gamesPlayed >= 1
     ) {
 
-        achievementText.textContent =
-            "🌱 First Step — keep playing to unlock more.";
+        return "🌱 First Step — keep playing to unlock more.";
 
     }
 
-    else {
-
-        achievementText.textContent =
-            "Play your first game to unlock achievements.";
-
-    }
+    return "Play your first game to unlock achievements.";
 
 }
 
 
 /* =========================================================
-   40. SOUND EFFECTS
-========================================================= */
+   30. SOUND
+   ========================================================== */
 
-function createBeep(
-    frequency,
-    duration
-) {
+/*
+    One AudioContext for the whole page.
+
+    A new context was built for every single beep, and
+    browsers cap how many live contexts a document may
+    hold, so the sound used to die partway through a
+    round. A suspended context is resumed instead, which
+    also satisfies the autoplay policy after the first
+    real tap.
+*/
+
+let audioContext = null;
+
+function getAudioContext() {
+
+    const AudioContextClass =
+        window.AudioContext ||
+        window.webkitAudioContext;
+
+    if (!AudioContextClass) {
+
+        return null;
+
+    }
 
     try {
 
-        const AudioContext =
-            window.AudioContext ||
-            window.webkitAudioContext;
+        if (
+            !audioContext ||
+            audioContext.state === "closed"
+        ) {
 
-
-        if (!AudioContext) {
-
-            return;
+            audioContext =
+                new AudioContextClass();
 
         }
 
+        if (
+            audioContext.state ===
+            "suspended"
+        ) {
 
-        const context =
-            new AudioContext();
+            audioContext.resume();
 
+        }
+
+        return audioContext;
+
+    } catch (error) {
+
+        return null;
+
+    }
+
+}
+
+function playTone(
+    frequency,
+    duration,
+    volume
+) {
+
+    const context =
+        getAudioContext();
+
+    if (!context) {
+
+        return;
+
+    }
+
+    try {
 
         const oscillator =
             context.createOscillator();
 
-
         const gain =
             context.createGain();
 
+        const now =
+            context.currentTime;
 
-        oscillator.connect(
-            gain
-        );
+        oscillator.connect(gain);
 
         gain.connect(
             context.destination
         );
 
-
-        oscillator.frequency.value =
-            frequency;
-
-
         oscillator.type =
             "sine";
 
+        oscillator.frequency.setValueAtTime(
+            frequency,
+            now
+        );
 
         gain.gain.setValueAtTime(
-            0.08,
-            context.currentTime
+            volume,
+            now
         );
-
 
         gain.gain.exponentialRampToValueAtTime(
-            0.001,
-            context.currentTime +
-            duration
+            0.0001,
+            now + duration
         );
 
-
-        oscillator.start();
+        oscillator.start(now);
 
         oscillator.stop(
-            context.currentTime +
-            duration
+            now + duration
         );
 
-    }
+    } catch (error) {
 
-    catch (error) {
-
-        console.log(
-            "Audio unavailable."
-        );
+        /*
+            Audio is decoration. A failure here must
+            never interrupt a round.
+        */
 
     }
 
 }
-
-
-/* =========================================================
-   41. CORRECT SOUND
-========================================================= */
 
 function playCorrectSound() {
 
-    createBeep(
-        700,
-        0.12
-    );
+    playTone(700, 0.12, 0.08);
 
 }
-
-
-/* =========================================================
-   42. WRONG SOUND
-========================================================= */
 
 function playWrongSound() {
 
-    createBeep(
-        180,
-        0.15
-    );
+    playTone(180, 0.15, 0.08);
 
 }
 
 
 /* =========================================================
-   43. KEYBOARD ENTER
-========================================================= */
+   31. INPUT SANITISING
+   ========================================================== */
+
+/*
+    The fields are type="text" so that Memory Numbers can
+    hold a leading zero and so the mouse wheel cannot
+    quietly rewrite a typed answer. That makes it our job
+    to reject anything that is not a digit.
+*/
+
+function filterToDigits(input) {
+
+    const original =
+        input.value;
+
+    const cleaned =
+        original.replace(/\D/g, "");
+
+    if (cleaned === original) {
+
+        return;
+
+    }
+
+    const removed =
+        original.length -
+        cleaned.length;
+
+    input.value = cleaned;
+
+    const caret =
+        Math.max(
+            0,
+            (input.selectionStart ??
+                cleaned.length) - removed
+        );
+
+    input.setSelectionRange(
+        caret,
+        caret
+    );
+
+}
+
+answerInput.addEventListener(
+    "input",
+    function() {
+
+        filterToDigits(answerInput);
+
+    }
+);
+
+memoryInput.addEventListener(
+    "input",
+    function() {
+
+        filterToDigits(memoryInput);
+
+    }
+);
 
 answerInput.addEventListener(
     "keydown",
     function(event) {
 
-        if (
-            event.key === "Enter"
-        ) {
+        if (event.key === "Enter") {
+
+            event.preventDefault();
 
             submitCurrentAnswer();
 
@@ -2315,18 +3223,13 @@ answerInput.addEventListener(
     }
 );
 
-
-/* =========================================================
-   44. MEMORY ENTER
-========================================================= */
-
 memoryInput.addEventListener(
     "keydown",
     function(event) {
 
-        if (
-            event.key === "Enter"
-        ) {
+        if (event.key === "Enter") {
+
+            event.preventDefault();
 
             submitMemoryAnswer();
 
@@ -2337,36 +3240,301 @@ memoryInput.addEventListener(
 
 
 /* =========================================================
-   45. SUBMIT BUTTON
-========================================================= */
+   32. KEYBOARD NAVIGATION
+   ========================================================== */
 
-submitAnswer.addEventListener(
-    "click",
-    function() {
+document.addEventListener(
+    "keydown",
+    function(event) {
 
-        submitCurrentAnswer();
+        if (event.defaultPrevented) {
+
+            return;
+
+        }
+
+        if (
+            event.metaKey ||
+            event.ctrlKey ||
+            event.altKey
+        ) {
+
+            return;
+
+        }
+
+        /*
+            While the dialog is open it owns Escape, so
+            the handler below stays out of the way.
+        */
+
+        if (confirmDialog.open) {
+
+            return;
+
+        }
+
+        const focused =
+            document.activeElement;
+
+        const isTyping =
+            focused &&
+            (
+                focused.tagName ===
+                    "INPUT" ||
+                focused.tagName ===
+                    "TEXTAREA"
+            );
+
+        if (event.key === "Escape") {
+
+            event.preventDefault();
+
+            if (isTyping) {
+
+                focused.blur();
+
+                return;
+
+            }
+
+            navigateBack();
+
+            return;
+
+        }
+
+        if (!gameState.active) {
+
+            return;
+
+        }
+
+        /*
+            Digits belong to the field while the player
+            is typing in it.
+        */
+
+        if (isTyping) {
+
+            return;
+
+        }
+
+        if (
+            !KEYBOARD_OPTIONS.includes(
+                event.key
+            )
+        ) {
+
+            return;
+
+        }
+
+        if (
+            optionsArea.classList.contains(
+                "hidden"
+            )
+        ) {
+
+            return;
+
+        }
+
+        const button =
+            answerOptions[
+                Number(event.key) - 1
+            ];
+
+        if (!button || button.disabled) {
+
+            return;
+
+        }
+
+        event.preventDefault();
+
+        selectOption(button);
 
     }
 );
 
+function navigateBack() {
+
+    if (gameState.active) {
+
+        requestConfirmation(
+            abandonGame
+        );
+
+        return;
+
+    }
+
+    if (activeScreen !== SCREENS.home) {
+
+        showScreen(SCREENS.home);
+
+    }
+
+}
+
 
 /* =========================================================
-   46. MEMORY SUBMIT
-========================================================= */
+   33. EVENT WIRING
+   ========================================================== */
 
-memorySubmit.addEventListener(
-    "click",
+function on(element, handler) {
+
+    if (element) {
+
+        element.addEventListener(
+            "click",
+            handler
+        );
+
+    }
+
+}
+
+on(
+    quickPlayButton,
     function() {
 
-        submitMemoryAnswer();
+        startGame("quick");
 
     }
 );
 
+on(
+    practiceButton,
+    function() {
 
-/* =========================================================
-   47. ANSWER OPTIONS
-========================================================= */
+        startGame("practice");
+
+    }
+);
+
+on(
+    logoButton,
+    function() {
+
+        showScreen(SCREENS.home);
+
+    }
+);
+
+on(
+    statsButton,
+    function() {
+
+        updateStatsScreen();
+
+        showScreen(SCREENS.stats);
+
+    }
+);
+
+on(
+    navStreakButton,
+    function() {
+
+        updateStatsScreen();
+
+        showScreen(SCREENS.stats);
+
+    }
+);
+
+on(
+    profileButton,
+    function() {
+
+        updateProfile();
+
+        showScreen(SCREENS.profile);
+
+    }
+);
+
+on(
+    statsBackButton,
+    function() {
+
+        showScreen(SCREENS.home);
+
+    }
+);
+
+on(
+    profileBackButton,
+    function() {
+
+        showScreen(SCREENS.home);
+
+    }
+);
+
+on(
+    homeButton,
+    function() {
+
+        showScreen(SCREENS.home);
+
+    }
+);
+
+on(
+    playAgainButton,
+    function() {
+
+        startGame(gameState.mode);
+
+    }
+);
+
+on(
+    endSessionButton,
+    function() {
+
+        endGame();
+
+    }
+);
+
+on(
+    gameBackButton,
+    function() {
+
+        requestConfirmation(
+            abandonGame
+        );
+
+    }
+);
+
+on(submitAnswer, submitCurrentAnswer);
+
+on(memorySubmit, submitMemoryAnswer);
+
+document
+    .querySelectorAll(".mode-card")
+    .forEach(
+        function(card) {
+
+            card.addEventListener(
+                "click",
+                function() {
+
+                    startGame(
+                        card.dataset.mode
+                    );
+
+                }
+            );
+
+        }
+    );
 
 answerOptions.forEach(
     function(button) {
@@ -2375,9 +3543,7 @@ answerOptions.forEach(
             "click",
             function() {
 
-                selectOption(
-                    button
-                );
+                selectOption(button);
 
             }
         );
@@ -2387,343 +3553,11 @@ answerOptions.forEach(
 
 
 /* =========================================================
-   48. MODE CARDS
-========================================================= */
-
-const modeCards =
-    document.querySelectorAll(
-        ".mode-card"
-    );
-
-
-modeCards.forEach(
-    function(card) {
-
-        card.addEventListener(
-            "click",
-            function() {
-
-                const mode =
-                    card.dataset.mode;
-
-                startGame(mode);
-
-            }
-        );
-
-    }
-);
-
-
-/* =========================================================
-   49. QUICK PLAY
-========================================================= */
-
-quickPlayButton.addEventListener(
-    "click",
-    function() {
-
-        startGame(
-            "quick"
-        );
-
-    }
-);
-
-
-/* =========================================================
-   50. PRACTICE
-========================================================= */
-
-practiceButton.addEventListener(
-    "click",
-    function() {
-
-        startGame(
-            "practice"
-        );
-
-    }
-);
-
-
-/* =========================================================
-   51. EXIT GAME
-========================================================= */
-
-gameBackButton.addEventListener(
-    "click",
-    function() {
-
-        const confirmed =
-            window.confirm(
-                "Are you sure you want to exit this game?"
-            );
-
-
-        if (confirmed) {
-
-            gameState.active =
-                false;
-
-            stopTimer();
-
-            clearTimeout(
-                gameState.memoryTimeout
-            );
-
-            showScreen(
-                homeScreen
-            );
-
-        }
-
-    }
-);
-
-
-/* =========================================================
-   52. PLAY AGAIN
-========================================================= */
-
-playAgainButton.addEventListener(
-    "click",
-    function() {
-
-        startGame(
-            gameState.mode
-        );
-
-    }
-);
-
-
-/* =========================================================
-   53. HOME BUTTON
-========================================================= */
-
-homeButton.addEventListener(
-    "click",
-    function() {
-
-        showScreen(
-            homeScreen
-        );
-
-    }
-);
-
-
-/* =========================================================
-   54. PROFILE
-========================================================= */
-
-profileButton.addEventListener(
-    "click",
-    function() {
-
-        updateProfile();
-
-        showScreen(
-            profileScreen
-        );
-
-    }
-);
-
-
-/* =========================================================
-   55. PROFILE BACK
-========================================================= */
-
-profileBackButton.addEventListener(
-    "click",
-    function() {
-
-        showScreen(
-            homeScreen
-        );
-
-    }
-);
-
-
-/* =========================================================
-   56. STATS BUTTON
-========================================================= */
-
-/*
-   Create a Stats button dynamically
-   because we want to keep the navbar clean.
-*/
-
-const statsNavigation =
-    document.createElement(
-        "button"
-    );
-
-
-statsNavigation.textContent =
-    "Stats";
-
-
-statsNavigation.className =
-    "secondary-button";
-
-
-statsNavigation.style.padding =
-    "9px 15px";
-
-
-document.querySelector(
-    ".nav-right"
-).insertBefore(
-    statsNavigation,
-    profileButton
-);
-
-
-statsNavigation.addEventListener(
-    "click",
-    function() {
-
-        updateStatsScreen();
-
-        showScreen(
-            statsScreen
-        );
-
-    }
-);
-
-
-/* =========================================================
-   57. STATS BACK
-========================================================= */
-
-statsBackButton.addEventListener(
-    "click",
-    function() {
-
-        showScreen(
-            homeScreen
-        );
-
-    }
-);
-
-
-/* =========================================================
-   58. TAB VISIBILITY
-========================================================= */
-
-document.addEventListener(
-    "visibilitychange",
-    function() {
-
-        /*
-            If the player switches tabs during a game,
-            we don't pause the game.
-
-            This keeps the timer behaving like a real
-            timed challenge.
-        */
-
-        if (
-            document.hidden &&
-            gameState.active
-        ) {
-
-            console.log(
-                "Game continues while tab is hidden."
-            );
-
-        }
-
-    }
-);
-
-
-/* =========================================================
-   59. INITIALIZE
-========================================================= */
+   34. INITIALISE
+   ========================================================== */
 
 loadPlayerData();
 
+setNavEnabled(true);
 
-/* =========================================================
-   60. WELCOME MESSAGE
-========================================================= */
-
-console.log(
-    "🧠 MindRush loaded successfully."
-);
-
-console.log(
-    "Built with vanilla HTML, CSS and JavaScript."
-);
-
-console.log(
-    "No libraries. No APIs."
-);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+activeScreen = homeScreen;

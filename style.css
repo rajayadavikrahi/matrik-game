@@ -1,6 +1,52 @@
 /* =========================================
+   TOKENS
+   ========================================= */
+
+:root {
+
+    color-scheme: dark;
+
+    /*
+        Every colour below was picked so that text on
+        its intended surface clears WCAG AA (4.5:1 for
+        body text, 3:1 for large text and UI edges).
+    */
+
+    --bg: #08090d;
+    --surface: #111218;
+    --surface-2: #15161c;
+    --surface-3: #191a21;
+
+    --border: #24252e;
+    --border-strong: #33343e;
+
+    --text: #f5f5f7;
+    --text-muted: #a1a1aa;
+    --text-faint: #8b8c96;
+
+    --accent: #7c3aed;
+    --accent-2: #4f46e5;
+    --accent-soft: #a78bfa;
+    --accent-bright: #818cf8;
+
+    --success: #34d399;
+    --success-border: #10b981;
+    --danger: #f87171;
+    --danger-border: #ef4444;
+
+    --focus: #a5b4fc;
+
+    --radius: 13px;
+    --radius-lg: 18px;
+
+    --tap: 44px;
+
+}
+
+
+/* =========================================
    RESET
-========================================= */
+   ========================================= */
 
 * {
     margin: 0;
@@ -16,16 +62,29 @@ body {
     min-height: 100vh;
 
     font-family:
-        Inter,
         -apple-system,
         BlinkMacSystemFont,
         "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
         sans-serif;
 
-    background: #08090d;
-    color: #f5f5f7;
+    background: var(--bg);
+    color: var(--text);
 
-    overflow-x: hidden;
+    /*
+        "clip" instead of "hidden".
+
+        overflow-x: hidden turns the body into a scroll
+        container, which unsticks the sticky navbar in
+        some engines. "clip" contains the overflow
+        without creating a scrollport.
+    */
+
+    overflow-x: clip;
+
+    -webkit-font-smoothing: antialiased;
 }
 
 button,
@@ -35,18 +94,135 @@ input {
 
 button {
     cursor: pointer;
+
+    /*
+        Removes the grey flash iOS/Safari paints on tap.
+        Keeps the tap feeling instant because the
+        :active state below replaces it.
+    */
+
+    -webkit-tap-highlight-color: transparent;
 }
 
-button:focus-visible,
-input:focus-visible {
-    outline: 2px solid #ffffff;
+button:disabled {
+    cursor: not-allowed;
+}
+
+a {
+    color: var(--accent-bright);
+}
+
+
+/* =========================================
+   FOCUS
+   ========================================= */
+
+/*
+    One focus treatment for every interactive
+    element, keyboard-only so mouse users do not
+    get rings they did not ask for.
+*/
+
+:where(
+    a,
+    button,
+    input,
+    [tabindex]
+):focus-visible {
+    outline: 2px solid var(--focus);
+
     outline-offset: 3px;
+}
+
+/*
+    Inputs keep a filled border as well, because a
+    2px ring on a low-contrast field is easy to miss.
+*/
+
+input:focus-visible {
+    outline-offset: 1px;
+}
+
+/*
+    Screen containers receive focus programmatically
+    so that screen readers announce the new view. A
+    ring around a whole page section is only noise, so
+    the ring is dropped for these two only.
+*/
+
+.screen:focus,
+.app:focus,
+.logo:focus {
+    outline: none;
+}
+
+
+/* =========================================
+   REDUCED MOTION
+   ========================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+
+        transition-duration: 0.01ms !important;
+
+        scroll-behavior: auto !important;
+    }
+
+}
+
+
+/* =========================================
+   SKIP LINK
+   ========================================= */
+
+.skip-link {
+    position: absolute;
+
+    top: 8px;
+    left: 8px;
+
+    z-index: 200;
+
+    padding: 13px 18px;
+
+    border-radius: var(--radius);
+
+    background: var(--accent-2);
+
+    color: white;
+
+    font-weight: 700;
+
+    text-decoration: none;
+
+    /*
+        Kept in the layout but moved out of view, so
+        it stays focusable and screen readers can still
+        reach it.
+    */
+
+    transform: translateY(
+        calc(-100% - 16px)
+    );
+
+    transition: transform 0.2s ease;
+}
+
+.skip-link:focus {
+    transform: translateY(0);
 }
 
 
 /* =========================================
    BACKGROUND
-========================================= */
+   ========================================= */
 
 .background-shape {
     position: fixed;
@@ -69,20 +245,20 @@ input:focus-visible {
     top: -200px;
     left: -200px;
 
-    background: #7c3aed;
+    background: var(--accent);
 }
 
 .shape-two {
     right: -200px;
     bottom: -200px;
 
-    background: #2563eb;
+    background: var(--accent-2);
 }
 
 
 /* =========================================
    NAVBAR
-========================================= */
+   ========================================= */
 
 .navbar {
     height: 80px;
@@ -91,12 +267,15 @@ input:focus-visible {
     align-items: center;
     justify-content: space-between;
 
+    gap: 16px;
+
     padding: 0 6%;
 
-    border-bottom: 1px solid #1d1e25;
+    border-bottom: 1px solid var(--border);
 
     background: rgba(8, 9, 13, 0.85);
 
+    -webkit-backdrop-filter: blur(20px);
     backdrop-filter: blur(20px);
 
     position: sticky;
@@ -110,12 +289,19 @@ input:focus-visible {
     align-items: center;
     gap: 12px;
 
+    padding: 4px;
+
+    background: none;
+    border: none;
+
+    color: var(--text);
+
     font-size: 21px;
     font-weight: 800;
 }
 
 .logo span span {
-    color: #8b5cf6;
+    color: var(--accent-soft);
 }
 
 .logo-icon {
@@ -129,8 +315,8 @@ input:focus-visible {
 
     background: linear-gradient(
         135deg,
-        #8b5cf6,
-        #6366f1
+        var(--accent),
+        var(--accent-2)
     );
 
     font-weight: 900;
@@ -139,7 +325,7 @@ input:focus-visible {
 .nav-right {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 12px;
 }
 
 .top-stat {
@@ -147,28 +333,39 @@ input:focus-visible {
     align-items: center;
     gap: 7px;
 
+    min-height: var(--tap);
+
     padding: 9px 14px;
 
-    background: #13141a;
+    background: var(--surface);
 
-    border: 1px solid #24252e;
+    border: 1px solid var(--border);
 
     border-radius: 12px;
+
+    color: var(--text);
 
     font-weight: 700;
 }
 
+.nav-button {
+    padding: 9px 15px;
+}
+
 .profile-button {
-    width: 40px;
-    height: 40px;
+    width: var(--tap);
+    height: var(--tap);
+
+    display: grid;
+    place-items: center;
 
     border-radius: 50%;
 
-    border: 1px solid #33343e;
+    border: 1px solid var(--border-strong);
 
-    background: #191a21;
+    background: var(--surface-3);
 
-    color: white;
+    color: var(--text);
 
     font-weight: 700;
 }
@@ -176,7 +373,7 @@ input:focus-visible {
 
 /* =========================================
    APP
-========================================= */
+   ========================================= */
 
 .app {
     width: min(1200px, 90%);
@@ -211,7 +408,7 @@ input:focus-visible {
 
 /* =========================================
    HERO
-========================================= */
+   ========================================= */
 
 .hero {
     min-height: 420px;
@@ -234,7 +431,7 @@ input:focus-visible {
 
     letter-spacing: 2px;
 
-    color: #9ca3af;
+    color: var(--text-muted);
 
     margin-bottom: 18px;
 }
@@ -252,8 +449,8 @@ input:focus-visible {
 .hero h1 span {
     background: linear-gradient(
         90deg,
-        #a78bfa,
-        #6366f1
+        var(--accent-soft),
+        var(--accent-bright)
     );
 
     -webkit-background-clip: text;
@@ -265,7 +462,7 @@ input:focus-visible {
 .hero p {
     max-width: 550px;
 
-    color: #a1a1aa;
+    color: var(--text-muted);
 
     font-size: 18px;
 
@@ -282,22 +479,29 @@ input:focus-visible {
 
 /* =========================================
    BUTTONS
-========================================= */
+   ========================================= */
 
 .primary-button,
 .secondary-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
     border: none;
 
-    border-radius: 13px;
+    border-radius: var(--radius);
 
     padding: 14px 22px;
+
+    min-height: var(--tap);
 
     font-weight: 700;
 
     transition:
-        transform 0.2s,
+        transform 0.15s,
         box-shadow 0.2s,
-        background 0.2s;
+        background 0.2s,
+        border-color 0.2s;
 }
 
 .primary-button {
@@ -305,31 +509,90 @@ input:focus-visible {
 
     background: linear-gradient(
         135deg,
-        #7c3aed,
-        #6366f1
+        var(--accent),
+        var(--accent-2)
     );
 
     box-shadow:
-        0 10px 30px rgba(99, 102, 241, 0.2);
-}
-
-.primary-button:hover {
-    transform: translateY(-2px);
-
-    box-shadow:
-        0 15px 35px rgba(99, 102, 241, 0.3);
+        0 10px 30px rgba(79, 70, 229, 0.25);
 }
 
 .secondary-button {
-    color: #ddd;
+    color: var(--text);
 
-    background: #15161c;
+    background: var(--surface-2);
 
-    border: 1px solid #292a33;
+    border: 1px solid var(--border-strong);
 }
 
-.secondary-button:hover {
-    background: #1c1d25;
+/*
+    Hover motion is gated behind "hover: hover" so
+    touch devices do not get a sticky lifted button
+    that stays hovered after the tap.
+*/
+
+@media (hover: hover) {
+
+    .primary-button:hover {
+        transform: translateY(-2px);
+
+        box-shadow:
+            0 15px 35px rgba(79, 70, 229, 0.35);
+    }
+
+    .secondary-button:hover {
+        background: var(--surface-3);
+
+        border-color: #464752;
+    }
+
+    .top-stat:hover {
+        background: var(--surface-2);
+
+        border-color: var(--border-strong);
+    }
+
+}
+
+/*
+    Pressed state.
+
+    The scale is small and the transition is short, so
+    the press is felt but nothing visibly shifts
+    between the two states.
+*/
+
+.primary-button:active,
+.secondary-button:active,
+.top-stat:active,
+.profile-button:active,
+.mode-card:active,
+.answer-option:active,
+.back-button:active {
+    transform: scale(0.97);
+}
+
+.primary-button.danger {
+    background: linear-gradient(
+        135deg,
+        #b91c1c,
+        var(--danger-border)
+    );
+
+    box-shadow:
+        0 10px 30px rgba(239, 68, 68, 0.2);
+}
+
+.primary-button:disabled,
+.secondary-button:disabled,
+.top-stat:disabled,
+.profile-button:disabled,
+.mode-card:disabled,
+.answer-option:disabled,
+.back-button:disabled {
+    opacity: 0.45;
+
+    transform: none;
 }
 
 .primary-button span {
@@ -339,12 +602,12 @@ input:focus-visible {
 
 /* =========================================
    HERO CARD
-========================================= */
+   ========================================= */
 
 .hero-card {
     height: 360px;
 
-    border: 1px solid #282932;
+    border: 1px solid var(--border-strong);
 
     border-radius: 30px;
 
@@ -354,7 +617,7 @@ input:focus-visible {
             rgba(124, 58, 237, 0.15),
             transparent 60%
         ),
-        #111218;
+        var(--surface);
 
     position: relative;
 
@@ -377,9 +640,9 @@ input:focus-visible {
 
     font-size: 80px;
 
-    background: #191a22;
+    background: var(--surface-3);
 
-    border: 1px solid #333441;
+    border: 1px solid var(--border-strong);
 
     box-shadow:
         0 0 80px rgba(124, 58, 237, 0.25);
@@ -403,9 +666,9 @@ input:focus-visible {
 
     padding: 12px 17px;
 
-    background: #1a1b23;
+    background: var(--surface-3);
 
-    border: 1px solid #30313b;
+    border: 1px solid var(--border-strong);
 
     border-radius: 12px;
 
@@ -413,7 +676,7 @@ input:focus-visible {
 
     font-weight: 800;
 
-    color: #c4b5fd;
+    color: var(--accent-soft);
 }
 
 .number-one {
@@ -436,7 +699,7 @@ input:focus-visible {
     bottom: 70px;
     left: 80px;
 
-    color: #34d399;
+    color: var(--success);
 
     transform: rotate(6deg);
 }
@@ -459,7 +722,7 @@ input:focus-visible {
 }
 
 .hero-card-bottom span {
-    color: #777985;
+    color: var(--text-muted);
 
     font-size: 13px;
 }
@@ -467,7 +730,7 @@ input:focus-visible {
 
 /* =========================================
    SECTION HEADINGS
-========================================= */
+   ========================================= */
 
 .section-heading {
     margin-bottom: 25px;
@@ -480,13 +743,13 @@ input:focus-visible {
 }
 
 .section-heading p {
-    color: #777985;
+    color: var(--text-muted);
 }
 
 
 /* =========================================
    MODE GRID
-========================================= */
+   ========================================= */
 
 .mode-grid {
     display: grid;
@@ -508,13 +771,13 @@ input:focus-visible {
 
     padding: 23px;
 
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
 
-    background: #111218;
+    background: var(--surface);
 
-    border: 1px solid #24252e;
+    border: 1px solid var(--border);
 
-    color: white;
+    color: var(--text);
 
     transition:
         transform 0.2s,
@@ -522,12 +785,16 @@ input:focus-visible {
         background 0.2s;
 }
 
-.mode-card:hover {
-    transform: translateY(-4px);
+@media (hover: hover) {
 
-    border-color: #464752;
+    .mode-card:hover {
+        transform: translateY(-4px);
 
-    background: #15161d;
+        border-color: #464752;
+
+        background: var(--surface-2);
+    }
+
 }
 
 .mode-icon {
@@ -562,18 +829,32 @@ input:focus-visible {
     background: rgba(16, 185, 129, 0.12);
 }
 
+/*
+    The mode card is a <button>, so its children have
+    to be phrasing content. These are spans, so they
+    need to be told to behave like the block level
+    elements they replaced.
+*/
+
 .mode-content {
+    display: block;
+
     flex: 1;
 }
 
-.mode-content h3 {
+.mode-title {
+    display: block;
+
     font-size: 17px;
+    font-weight: 700;
 
     margin-bottom: 5px;
 }
 
-.mode-content p {
-    color: #777985;
+.mode-desc {
+    display: block;
+
+    color: var(--text-muted);
 
     font-size: 13px;
 
@@ -587,21 +868,23 @@ input:focus-visible {
 
     gap: 12px;
 
-    color: #9b9ca6;
+    color: var(--text-faint);
 
     font-size: 11px;
 }
 
 .mode-arrow {
-    color: #666773;
+    color: var(--text-faint);
 
     font-size: 20px;
+
+    margin-left: 12px;
 }
 
 
 /* =========================================
    DASHBOARD
-========================================= */
+   ========================================= */
 
 .dashboard-grid {
     display: grid;
@@ -614,11 +897,11 @@ input:focus-visible {
 .dashboard-card {
     padding: 25px;
 
-    border: 1px solid #24252e;
+    border: 1px solid var(--border);
 
-    background: #111218;
+    background: var(--surface);
 
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
 }
 
 .dashboard-title {
@@ -656,7 +939,7 @@ input:focus-visible {
 }
 
 .progress-stats span {
-    color: #777985;
+    color: var(--text-muted);
 
     font-size: 12px;
 }
@@ -672,6 +955,8 @@ input:focus-visible {
     width: 65px;
     height: 65px;
 
+    min-width: 65px;
+
     display: grid;
     place-items: center;
 
@@ -685,7 +970,7 @@ input:focus-visible {
 .streak-card span {
     display: block;
 
-    color: #777985;
+    color: var(--text-muted);
 
     font-size: 13px;
 
@@ -699,7 +984,7 @@ input:focus-visible {
 
 /* =========================================
    GAME HEADER
-========================================= */
+   ========================================= */
 
 .game-header {
     display: grid;
@@ -708,25 +993,33 @@ input:focus-visible {
 
     align-items: center;
 
+    gap: 16px;
+
     margin-bottom: 35px;
 }
 
 .back-button {
     width: max-content;
 
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    min-height: var(--tap);
+
     background: transparent;
 
     border: none;
 
-    color: #92939e;
+    border-radius: 10px;
+
+    color: var(--text-muted);
 
     font-weight: 600;
-
-    padding: 8px 0;
 }
 
 .back-button:hover {
-    color: white;
+    color: var(--text);
 }
 
 .game-title {
@@ -736,8 +1029,18 @@ input:focus-visible {
     gap: 12px;
 }
 
-.game-title > span {
+/*
+    Scoped by class, not by descendant selector.
+
+    The previous ".game-title > span" then
+    ".game-title span" pair had equal specificity, so
+    the later rule shrank the mode icon from 25px to
+    12px.
+*/
+
+.game-mode-icon {
     font-size: 25px;
+    line-height: 1;
 }
 
 .game-title h2 {
@@ -746,8 +1049,10 @@ input:focus-visible {
     margin-bottom: 2px;
 }
 
-.game-title span {
-    color: #858691;
+.game-question-counter {
+    display: block;
+
+    color: var(--text-muted);
 
     font-size: 12px;
 }
@@ -761,7 +1066,7 @@ input:focus-visible {
 .game-score span {
     display: block;
 
-    color: #777985;
+    color: var(--text-muted);
 
     font-size: 11px;
 
@@ -777,10 +1082,12 @@ input:focus-visible {
 
 /* =========================================
    TIMER
-========================================= */
+   ========================================= */
 
 .timer-container {
-    margin-bottom: 30px;
+    max-width: 850px;
+
+    margin: 0 auto 30px;
 }
 
 .timer-info {
@@ -794,7 +1101,7 @@ input:focus-visible {
 }
 
 .timer-info span {
-    color: #777985;
+    color: var(--text-muted);
 
     font-size: 10px;
 
@@ -803,12 +1110,14 @@ input:focus-visible {
 
 .timer-info strong {
     font-size: 14px;
+
+    font-variant-numeric: tabular-nums;
 }
 
 .timer-bar {
     height: 5px;
 
-    background: #202128;
+    background: var(--surface-3);
 
     border-radius: 99px;
 
@@ -822,8 +1131,8 @@ input:focus-visible {
 
     background: linear-gradient(
         90deg,
-        #8b5cf6,
-        #6366f1
+        var(--accent),
+        var(--accent-2)
     );
 
     border-radius: inherit;
@@ -831,10 +1140,27 @@ input:focus-visible {
     transition: width 0.1s linear;
 }
 
+/*
+    Applied by script when the clock is nearly out, so
+    the bar is not the only warning.
+*/
+
+.timer-container.is-urgent .timer-info strong {
+    color: var(--danger);
+}
+
+.timer-container.is-urgent .timer-progress {
+    background: linear-gradient(
+        90deg,
+        #b91c1c,
+        var(--danger-border)
+    );
+}
+
 
 /* =========================================
    GAME CARD
-========================================= */
+   ========================================= */
 
 .game-card {
     max-width: 850px;
@@ -852,9 +1178,9 @@ input:focus-visible {
 
     justify-content: center;
 
-    background: #111218;
+    background: var(--surface);
 
-    border: 1px solid #272832;
+    border: 1px solid var(--border-strong);
 
     border-radius: 25px;
 
@@ -862,7 +1188,7 @@ input:focus-visible {
 }
 
 .question-label {
-    color: #777985;
+    color: var(--text-muted);
 
     font-size: 12px;
 
@@ -881,11 +1207,20 @@ input:focus-visible {
 }
 
 .question {
-    font-size: clamp(45px, 8vw, 75px);
+    font-size: clamp(40px, 8vw, 75px);
 
     font-weight: 800;
 
     letter-spacing: -3px;
+
+    line-height: 1.1;
+
+    /*
+        Long expressions on narrow screens wrap
+        instead of forcing a horizontal scrollbar.
+    */
+
+    overflow-wrap: anywhere;
 }
 
 .input-area {
@@ -906,13 +1241,15 @@ input:focus-visible {
 
     padding: 15px 18px;
 
-    background: #191a21;
+    min-height: var(--tap);
 
-    border: 1px solid #30313b;
+    background: var(--surface-3);
+
+    border: 1px solid var(--border-strong);
 
     border-radius: 12px;
 
-    color: white;
+    color: var(--text);
 
     font-size: 17px;
 
@@ -921,9 +1258,16 @@ input:focus-visible {
     outline: none;
 }
 
+.input-area input::placeholder,
+.memory-area input::placeholder {
+    color: var(--text-faint);
+
+    opacity: 1;
+}
+
 .input-area input:focus,
 .memory-area input:focus {
-    border-color: #6366f1;
+    border-color: var(--accent-bright);
 }
 
 .submit-button {
@@ -933,7 +1277,7 @@ input:focus-visible {
 
 /* =========================================
    OPTIONS
-========================================= */
+   ========================================= */
 
 .options-area {
     width: 100%;
@@ -949,51 +1293,102 @@ input:focus-visible {
 }
 
 .answer-option {
+    position: relative;
+
+    display: grid;
+    place-items: center;
+
     padding: 17px;
 
-    border-radius: 13px;
+    min-height: var(--tap);
 
-    border: 1px solid #2b2c35;
+    border-radius: var(--radius);
 
-    background: #181920;
+    border: 1px solid var(--border);
 
-    color: white;
+    background: var(--surface-3);
 
-    font-size: 20px;
+    color: var(--text);
 
-    font-weight: 700;
-
-    transition: all 0.2s;
+    transition:
+        background 0.15s,
+        border-color 0.15s,
+        transform 0.15s,
+        color 0.15s;
 }
 
-.answer-option:hover {
-    background: #24252e;
+@media (hover: hover) {
 
-    border-color: #555664;
+    .answer-option:not(:disabled):hover {
+        background: var(--surface-2);
 
-    transform: translateY(-2px);
+        border-color: #555664;
+
+        transform: translateY(-2px);
+    }
+
+}
+
+.option-value {
+    font-size: 20px;
+    font-weight: 700;
+
+    font-variant-numeric: tabular-nums;
+}
+
+/*
+    The number shortcut, shown on the option so the
+    keyboard route is discoverable.
+*/
+
+.option-key {
+    position: absolute;
+
+    top: 7px;
+    left: 9px;
+
+    min-width: 17px;
+    height: 17px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 5px;
+
+    background: var(--surface);
+
+    border: 1px solid var(--border-strong);
+
+    color: var(--text-faint);
+
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.answer-option:disabled .option-key {
+    opacity: 0;
 }
 
 .answer-option.correct {
     background: rgba(16, 185, 129, 0.15);
 
-    border-color: #10b981;
+    border-color: var(--success-border);
 
-    color: #34d399;
+    color: var(--success);
 }
 
 .answer-option.wrong {
     background: rgba(239, 68, 68, 0.15);
 
-    border-color: #ef4444;
+    border-color: var(--danger-border);
 
-    color: #f87171;
+    color: var(--danger);
 }
 
 
 /* =========================================
    MEMORY
-========================================= */
+   ========================================= */
 
 .memory-area {
     width: 100%;
@@ -1012,17 +1407,19 @@ input:focus-visible {
 .memory-number {
     min-height: 70px;
 
-    font-size: 48px;
+    font-size: clamp(32px, 6vw, 48px);
 
     font-weight: 800;
 
     letter-spacing: 8px;
 
-    color: #a78bfa;
+    color: var(--accent-soft);
+
+    font-variant-numeric: tabular-nums;
 }
 
 .memory-instruction {
-    color: #777985;
+    color: var(--text-muted);
 
     margin-bottom: 10px;
 }
@@ -1038,7 +1435,7 @@ input:focus-visible {
 
 /* =========================================
    FEEDBACK
-========================================= */
+   ========================================= */
 
 .feedback {
     min-height: 25px;
@@ -1051,17 +1448,17 @@ input:focus-visible {
 }
 
 .feedback.correct {
-    color: #34d399;
+    color: var(--success);
 }
 
 .feedback.wrong {
-    color: #f87171;
+    color: var(--danger);
 }
 
 
 /* =========================================
    GAME BOTTOM
-========================================= */
+   ========================================= */
 
 .game-bottom-stats {
     max-width: 850px;
@@ -1078,18 +1475,18 @@ input:focus-visible {
 .game-bottom-stats div {
     padding: 15px;
 
-    background: #111218;
+    background: var(--surface);
 
-    border: 1px solid #24252e;
+    border: 1px solid var(--border);
 
-    border-radius: 13px;
+    border-radius: var(--radius);
 
     display: flex;
     justify-content: space-between;
 }
 
 .game-bottom-stats span {
-    color: #777985;
+    color: var(--text-muted);
 
     font-size: 12px;
 }
@@ -1098,10 +1495,18 @@ input:focus-visible {
     font-size: 14px;
 }
 
+.game-end-session {
+    max-width: 850px;
+
+    margin: 15px auto 0;
+
+    text-align: center;
+}
+
 
 /* =========================================
    HIDDEN
-========================================= */
+   ========================================= */
 
 .hidden {
     display: none !important;
@@ -1110,7 +1515,7 @@ input:focus-visible {
 
 /* =========================================
    RESULT
-========================================= */
+   ========================================= */
 
 .result-container {
     max-width: 700px;
@@ -1146,7 +1551,7 @@ input:focus-visible {
 }
 
 .result-container > p {
-    color: #777985;
+    color: var(--text-muted);
 
     margin-bottom: 35px;
 }
@@ -1154,9 +1559,9 @@ input:focus-visible {
 .final-score {
     padding: 30px;
 
-    background: #111218;
+    background: var(--surface);
 
-    border: 1px solid #282933;
+    border: 1px solid var(--border-strong);
 
     border-radius: 20px;
 
@@ -1166,7 +1571,7 @@ input:focus-visible {
 .final-score span {
     display: block;
 
-    color: #777985;
+    color: var(--text-muted);
 
     font-size: 11px;
 
@@ -1180,14 +1585,16 @@ input:focus-visible {
 
     background: linear-gradient(
         90deg,
-        #a78bfa,
-        #6366f1
+        var(--accent-soft),
+        var(--accent-bright)
     );
 
     -webkit-background-clip: text;
     background-clip: text;
 
     color: transparent;
+
+    font-variant-numeric: tabular-nums;
 }
 
 .result-stats {
@@ -1203,9 +1610,9 @@ input:focus-visible {
 .result-stats div {
     padding: 18px;
 
-    background: #111218;
+    background: var(--surface);
 
-    border: 1px solid #24252e;
+    border: 1px solid var(--border);
 
     border-radius: 14px;
 }
@@ -1216,10 +1623,12 @@ input:focus-visible {
     font-size: 22px;
 
     margin-bottom: 5px;
+
+    font-variant-numeric: tabular-nums;
 }
 
 .result-stats span {
-    color: #777985;
+    color: var(--text-muted);
 
     font-size: 11px;
 }
@@ -1235,7 +1644,7 @@ input:focus-visible {
 
 /* =========================================
    PAGE HEADER
-========================================= */
+   ========================================= */
 
 .page-header {
     display: flex;
@@ -1256,7 +1665,7 @@ input:focus-visible {
 
 /* =========================================
    STATS
-========================================= */
+   ========================================= */
 
 .stats-large-grid {
     display: grid;
@@ -1271,11 +1680,11 @@ input:focus-visible {
 .stat-large-card {
     padding: 25px;
 
-    background: #111218;
+    background: var(--surface);
 
-    border: 1px solid #24252e;
+    border: 1px solid var(--border);
 
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
 }
 
 .stat-large-card span {
@@ -1292,31 +1701,34 @@ input:focus-visible {
     font-size: 32px;
 
     margin-bottom: 5px;
+
+    font-variant-numeric: tabular-nums;
 }
 
 .stat-large-card small {
-    color: #777985;
+    color: var(--text-muted);
 }
 
 .achievement-card {
     display: flex;
-
     align-items: center;
 
     gap: 20px;
 
     padding: 25px;
 
-    background: #111218;
+    background: var(--surface);
 
-    border: 1px solid #24252e;
+    border: 1px solid var(--border);
 
-    border-radius: 18px;
+    border-radius: var(--radius-lg);
 }
 
 .achievement-icon {
     width: 60px;
     height: 60px;
+
+    min-width: 60px;
 
     display: grid;
     place-items: center;
@@ -1333,13 +1745,13 @@ input:focus-visible {
 }
 
 .achievement-card p {
-    color: #777985;
+    color: var(--text-muted);
 }
 
 
 /* =========================================
    PROFILE
-========================================= */
+   ========================================= */
 
 .profile-card {
     max-width: 550px;
@@ -1350,9 +1762,9 @@ input:focus-visible {
 
     padding: 45px;
 
-    background: #111218;
+    background: var(--surface);
 
-    border: 1px solid #272832;
+    border: 1px solid var(--border-strong);
 
     border-radius: 25px;
 }
@@ -1370,8 +1782,8 @@ input:focus-visible {
 
     background: linear-gradient(
         135deg,
-        #7c3aed,
-        #4f46e5
+        var(--accent),
+        var(--accent-2)
     );
 
     font-size: 35px;
@@ -1386,7 +1798,7 @@ input:focus-visible {
 }
 
 .profile-card > p {
-    color: #777985;
+    color: var(--text-muted);
 
     margin-bottom: 30px;
 }
@@ -1400,13 +1812,13 @@ input:focus-visible {
 }
 
 .profile-level span {
-    color: #777985;
+    color: var(--text-muted);
 }
 
 .xp-bar {
     height: 9px;
 
-    background: #24252e;
+    background: var(--border);
 
     border-radius: 20px;
 
@@ -1420,8 +1832,8 @@ input:focus-visible {
 
     background: linear-gradient(
         90deg,
-        #8b5cf6,
-        #6366f1
+        var(--accent),
+        var(--accent-2)
     );
 
     transition: width 0.5s ease;
@@ -1430,20 +1842,22 @@ input:focus-visible {
 .xp-text {
     display: block;
 
-    color: #777985;
+    color: var(--text-muted);
 
     font-size: 12px;
 
     margin-top: 8px;
+
+    font-variant-numeric: tabular-nums;
 }
 
 
 /* =========================================
    FOOTER
-========================================= */
+   ========================================= */
 
 footer {
-    border-top: 1px solid #1d1e25;
+    border-top: 1px solid var(--border);
 
     padding: 25px 6%;
 
@@ -1451,15 +1865,70 @@ footer {
 
     justify-content: space-between;
 
-    color: #5f606a;
+    gap: 12px;
+
+    color: var(--text-faint);
 
     font-size: 12px;
 }
 
 
 /* =========================================
+   CONFIRM DIALOG
+   ========================================= */
+
+.confirm-dialog {
+    width: min(420px, calc(100vw - 32px));
+
+    padding: 28px;
+
+    border: 1px solid var(--border-strong);
+
+    border-radius: var(--radius-lg);
+
+    background: var(--surface);
+
+    color: var(--text);
+
+    text-align: center;
+}
+
+.confirm-dialog::backdrop {
+    background: rgba(3, 4, 6, 0.72);
+
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+}
+
+.confirm-dialog h2 {
+    font-size: 21px;
+
+    margin-bottom: 10px;
+}
+
+.confirm-dialog p {
+    color: var(--text-muted);
+
+    font-size: 14px;
+
+    line-height: 1.6;
+
+    margin-bottom: 24px;
+}
+
+.confirm-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.confirm-buttons button {
+    flex: 1;
+}
+
+
+/* =========================================
    SHAKE ANIMATION
-========================================= */
+   ========================================= */
 
 .shake {
     animation: shake 0.3s ease;
@@ -1483,7 +1952,7 @@ footer {
 
 /* =========================================
    RESPONSIVE
-========================================= */
+   ========================================= */
 
 @media (max-width: 850px) {
 
@@ -1622,218 +2091,85 @@ footer {
         width: 100%;
     }
 
+    .confirm-buttons {
+        flex-direction: column-reverse;
+    }
+
     footer {
         flex-direction: column;
 
         gap: 8px;
     }
 
+    /*
+        Below this width the three navbar items plus the
+        wordmark no longer fit on one line.
+    */
+
+    .nav-button {
+        padding: 9px 12px;
+    }
+
+    .top-stat {
+        padding: 9px 11px;
+    }
+
 }
 
+/*
+    The wordmark and the three nav controls together
+    measure more than a 320px viewport, which pushed the
+    profile button off the right edge and gave the whole
+    page a horizontal scrollbar.
 
+    Below 420px the wordmark text is dropped in favour of
+    the logo mark so the controls always fit.
+*/
 
+@media (max-width: 420px) {
 
+    .navbar {
+        gap: 10px;
+    }
 
+    .logo > span:not(.logo-icon) {
 
+        /*
+            display:none would drop the accessible name,
+            so the wordmark is visually hidden but still
+            available to assistive technology.
+        */
 
+        position: absolute;
 
+        width: 1px;
+        height: 1px;
 
+        overflow: hidden;
 
+        clip-path: inset(50%);
 
+        white-space: nowrap;
+    }
 
+    .logo {
+        position: relative;
+    }
 
+    .nav-right {
+        gap: 8px;
+    }
 
+    .top-stat {
+        padding: 8px 10px;
 
+        font-size: 14px;
+    }
 
+    .nav-button {
+        padding: 9px 11px;
 
+        font-size: 14px;
+    }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+}
