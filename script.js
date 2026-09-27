@@ -245,6 +245,7 @@ const gameCorrect =
     document.getElementById("gameCorrect");
 
 
+
 /* =========================================================
    5. LOAD PLAYER DATA
 ========================================================= */
@@ -787,7 +788,6 @@ function createQuickMathQuestion() {
 
 }
 
-
 /* =========================================================
    18. SNAP QUESTION
 ========================================================= */
@@ -1085,6 +1085,7 @@ function createMemoryQuestion() {
 
             10
         );
+
 
 
     let sequence = "";
@@ -2726,27 +2727,3 @@ console.log(
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#gfgfgfgfgggfgfdsassaadssdaadasddddddaaaagzxzx`zfgfgdasdadadaddadasddsdadfgfvbghghghxccxzgzxssaassasasx`zx`zaefwesdsadasdewewerwdwwrewrewrrwerrwerwrwfgsgsfggdggsgfdgerttrwwtwerttrwrtrtwtwrtrfsdfvxcvfdsfressfjhfhfjhsuheururtuifjfjshiuierjfghksijkjhiiouiuuouiuwoerujfjfskoiurjkjfigkjfhjghriuruierioehv nx`zzxxzx`z`xz`
